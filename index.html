@@ -1958,7 +1958,7 @@ function _renderRotationPlannerInner() {
       var bedKey2 = field.name + '_' + i;
       var noteText = (rotationNotes[season2] && rotationNotes[season2][bedKey2]) || '';
       var noteInputId = 'bed-note-input-' + field.name.replace(/\s/g,'_') + '_' + i;
-      var deliveryDate  = (rotationDelivery[season2]  && rotationDelivery[season2][bedKey2])  || '';
+      var primSegForDate = segs[0]; var autoDeliveryISO = ''; if (primSegForDate) {   var primSegCropDef = plantDefs.find(function(d){ return d.name===primSegForDate.crop && normSeason(d.season)===normSeason(season2); });   var primSegEffSD = primSegCropDef ? getEffectiveStartDate(primSegCropDef, season2) : '';   if (primSegCropDef && primSegEffSD) {     var pwd = new Date(primSegEffSD + 'T00:00:00');     pwd.setDate(pwd.getDate() + ((primSegForDate.wave||1) - 1) * (primSegCropDef.interval || 0) * 7);     autoDeliveryISO = pwd.getFullYear() + '-' + String(pwd.getMonth()+1).padStart(2,'0') + '-' + String(pwd.getDate()).padStart(2,'0');   } } var deliveryDate  = (rotationDelivery[season2]  && rotationDelivery[season2][bedKey2])  || autoDeliveryISO || '';
       var clearanceDate = (rotationClearance[season2] && rotationClearance[season2][bedKey2]) || '';
       var fmtDate = function(d){var p=d.split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0].slice(2):d;};
       var fmtDel = deliveryDate  ? fmtDate(deliveryDate)  : '';
