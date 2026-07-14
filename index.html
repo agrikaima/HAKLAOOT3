@@ -222,7 +222,7 @@
 <body>
 
 <header>
-  <h1>🌱 יומן שתילות</h1>
+  <h1>🌱 שלושהברושיםירוקים-זה-הכל</h1>
   <p id="syncStatus">מוכן לתיעוד</p>
 </header>
 
@@ -4018,7 +4018,7 @@ async function syncAll() {
 // ── Settings ──────────────────────────────────
 function exportAllData() {
   const keys = ['plantSpecies','plantDefs','plantings','rotationPlan','rotationNotes','rotationDelivery','rotationClearance','orderOverrides','settings','tasks'];
-  const data = { _version: 1, _exported: new Date().toISOString(), _farm: settings.farmName || 'יומן שתילות' };
+  const data = { _version: 1, _exported: new Date().toISOString(), _farm: settings.farmName || 'שלושהברושיםירוקים-זה-הכל' };
   keys.forEach(k => { try { data[k] = JSON.parse(localStorage.getItem(k) || 'null'); } catch(e){} });
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
   const a = document.createElement('a');
