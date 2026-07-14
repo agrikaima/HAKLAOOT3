@@ -1975,7 +1975,7 @@ function _renderRotationPlannerInner() {
       var autoClearStr = '';
       if (deliveryDate && growDaysVal) {
         var acd = new Date(deliveryDate + 'T00:00:00');
-        acd.setDate(acd.getDate() + parseInt(growDaysVal));
+        acd.setDate(acd.getDate() + parseInt(growDaysVal) + 21);
         autoClearStr = acd.getDate() + '/' + (acd.getMonth()+1) + '/' + acd.getFullYear();
       }
       var clearDisplay = fmtClr || autoClearStr;
