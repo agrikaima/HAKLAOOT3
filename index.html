@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#2d6a4f">
-  <title> שלושהברושיםירוקים-זה-הכל</title>
+  <title> שלושה ברושים ירוקים-ראשי</title>
   <link rel="manifest" href="manifest.json">
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
@@ -222,7 +222,7 @@
 <body>
 
 <header>
-  <h1>🌱 שלושהברושיםירוקים-זה-הכל</h1>
+  <h1>🌱 שלושה ברושים ירוקים-ראשי</h1>
   <p id="syncStatus">מוכן לתיעוד</p>
 </header>
 
@@ -4018,7 +4018,7 @@ async function syncAll() {
 // ── Settings ──────────────────────────────────
 function exportAllData() {
   const keys = ['plantSpecies','plantDefs','plantings','rotationPlan','rotationNotes','rotationDelivery','rotationClearance','orderOverrides','settings','tasks'];
-  const data = { _version: 1, _exported: new Date().toISOString(), _farm: settings.farmName || 'שלושהברושיםירוקים-זה-הכל' };
+  const data = { _version: 1, _exported: new Date().toISOString(), _farm: settings.farmName || 'שלושה ברושים ירוקים-ראשי' };
   keys.forEach(k => { try { data[k] = JSON.parse(localStorage.getItem(k) || 'null'); } catch(e){} });
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
   const a = document.createElement('a');
