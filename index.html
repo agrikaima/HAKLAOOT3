@@ -1900,7 +1900,7 @@ function _renderRotationPlannerInner() {
           +'<div style="flex:1;min-width:0">'
           +'<div style="display:flex;align-items:center;gap:2px;flex-wrap:wrap">'
           +waveTag
-          +(waveDateStr ? '<span style="font-size:.68rem;font-weight:700;color:#0369a1;flex-shrink:0">'+waveDateStr+'</span>' : '')
+         
           +'</div>'
           +(function(){var sp2=plantSpecies.find(function(x){return x.name===s.crop;});var dm=isDripBedSp&&sp2&&sp2.dripBased?(sp2.rows||1):1;return'<div style="font-weight:600;color:#1f2937;word-break:break-word;line-height:1.3">'+escHtml(s.crop)+(s.meters!==null?'<span style="font-weight:400;color:#6b7280"> '+(Math.round(s.meters*dm*10)/10)+'מ׳</span>':'')+'</div>';})()
           +'</div>'
