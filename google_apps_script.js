@@ -259,7 +259,7 @@ function writeFieldMap(ss, d) {
   const sheet = ss.insertSheet(sheetName);
   sheet.setRightToLeft(true);
 
-  const ZONE_BG   = { 'עונתיים':'#1b4332', 'ירוקים':'#14532d', 'חול':'#78350f', 'מיוחד':'#3b0764' };
+  const ZONE_BG   = { 'עונתיים':'#2d6a4f', 'ירוקים':'#2f9e44', 'חול':'#b45309', 'מיוחד':'#7c3aed' };
   const FIELD_BG  = { 'עונתיים':'#065f46', 'ירוקים':'#166534', 'חול':'#92400e', 'מיוחד':'#4c1d95' };
   const BED_COL_W = 72; // px per bed column
   const GAP       = 1;  // blank columns between paired fields
