@@ -260,8 +260,8 @@ function writeFieldMap(ss, d) {
   sheet.setRightToLeft(true);
 
   const ZONE_BG   = { 'עונתיים':'#2d6a4f', 'ירוקים':'#2f9e44', 'חול':'#b45309', 'מיוחד':'#7c3aed' };
-  const FIELD_BG  = { 'עונתיים':'#065f46', 'ירוקים':'#166534', 'חול':'#92400e', 'מיוחד':'#4c1d95' };
-  const BED_COL_W = 72; // px per bed column
+  const FIELD_BG  = { 'עונתיים':'#10b981', 'ירוקים':'#22c55e', 'חול':'#d97706', 'מיוחד':'#8b5cf6' };
+  const BED_COL_W = 54; // px per bed column
   const GAP       = 1;  // blank columns between paired fields
 
   // Group fields into ימין/שמאל pairs, preserving FIELD_DEFS order
@@ -309,9 +309,10 @@ function writeFieldMap(ss, d) {
     }
 
     if (g.type === 'pair') {
-    _renderBlock(sheet, g.right, row, 1, BED_COL_W, FIELD_BG);
+      _renderBlock(sheet, g.right, row, 1, BED_COL_W, FIELD_BG);
       row += 3;
       _renderBlock(sheet, g.left,  row, 1, BED_COL_W, FIELD_BG);
+    } else {
       _renderBlock(sheet, g.field, row, 1, BED_COL_W, FIELD_BG);
     }
     row += 3; // header + bed# row + content row
@@ -381,7 +382,7 @@ function _renderBlock(sheet, field, startRow, startCol, colW, FIELD_BG) {
       cell.setBackground('#f9fafb');
     }
   }
-  sheet.setRowHeight(startRow + 2, 60);
+  sheet.setRowHeight(startRow + 2, 46);
 }
 
 // ─── עזרים ───────────────────────────────────────────────────────
@@ -416,24 +417,20 @@ function jsonOk(msg) {
 var EVENTS_IL_2026_2027 = [
 
   // ══ ראש השנה ══
-  // ערב ר"ה שישי 11/9, ימי חג שבת-ראשון 12-13/9 — לימודים חוזרים שני 14/9
   { date:'2026-09-11', label:'ערב ראש השנה', type:'holiday' },
   { date:'2026-09-12', label:'ראש השנה א׳ תשפ"ז', type:'holiday' },
   { date:'2026-09-13', label:'ראש השנה ב׳ תשפ"ז', type:'holiday' },
   { date:'2026-09-11', endDate:'2026-09-13', label:'חופשת ראש השנה', resumeDate:'14/9/2026', type:'vacation' },
 
   // ══ יום הכיפורים ══
-  // ערב יוה"כ ראשון 20/9, יוה"כ שני 21/9
   { date:'2026-09-20', label:'ערב יום הכיפורים', type:'holiday' },
   { date:'2026-09-21', label:'יום הכיפורים', type:'holiday' },
   { date:'2026-09-20', endDate:'2026-09-21', label:'יום הכיפורים — אין לימודים', resumeDate:'22/9/2026', type:'vacation' },
 
   // ══ ימי חופשה בין יוה"כ לסוכות ══
-  // שלישי-חמישי 22-24/9
   { date:'2026-09-22', endDate:'2026-09-24', label:'ימי חופשה בין יוה"כ לסוכות (שלישי–חמישי)', resumeDate:'25/9/2026', type:'vacation' },
 
   // ══ חג הסוכות ══
-  // ערב סוכות שישי 25/9 — שמחת תורה שבת 3/10 — לימודים חוזרים ראשון 4/10
   { date:'2026-09-25', label:'ערב חג הסוכות', type:'holiday' },
   { date:'2026-09-26', label:'סוכות א׳ תשפ"ז', type:'holiday' },
   { date:'2026-09-27', label:'סוכות ב׳ (חו"מ)', type:'holiday' },
@@ -443,27 +440,22 @@ var EVENTS_IL_2026_2027 = [
   { date:'2026-09-25', endDate:'2026-10-03', label:'חופשת סוכות ושמחת תורה', resumeDate:'4/10/2026', type:'vacation' },
 
   // ══ חג הסיגד ══
-  // שני 9/11 — יום לימודים (אירועים בלבד)
   { date:'2026-11-09', label:'חג הסיגד (יום לימודים — אירועים)', type:'holiday' },
 
   // ══ חנוכה ══
-  // ראשון 6/12 עד שבת 12/12 — לימודים חוזרים ראשון 13/12
   { date:'2026-12-06', label:'חנוכה א׳ (כ"ו כסלו)', type:'holiday' },
   { date:'2026-12-12', label:'חנוכה ז׳ (ב׳ טבת)', type:'holiday' },
   { date:'2026-12-06', endDate:'2026-12-12', label:'חופשת חנוכה', resumeDate:'13/12/2026', type:'vacation' },
 
   // ══ ט"ו בשבט ══
-  // שבת 23/1/2027 — שבת, אין לימודים ממילא
   { date:'2027-01-23', label:'ט"ו בשבט (שבת)', type:'holiday' },
 
   // ══ פורים ══
-  // שלישי-רביעי 23-24/3 — לימודים חוזרים חמישי 25/3
   { date:'2027-03-23', label:'פורים (י"ד אדר ב׳)', type:'holiday' },
   { date:'2027-03-24', label:'שושן פורים (ט"ו אדר ב׳)', type:'holiday' },
   { date:'2027-03-22', endDate:'2027-03-24', label:'חופשת פורים', resumeDate:'25/3/2027', type:'vacation' },
 
   // ══ פסח ══
-  // שלישי 13/4 עד רביעי 28/4 — לימודים חוזרים חמישי 29/4
   { date:'2027-04-13', label:'ערב פסח (י"ג ניסן)', type:'holiday' },
   { date:'2027-04-14', label:'פסח א׳', type:'holiday' },
   { date:'2027-04-15', label:'פסח ב׳', type:'holiday' },
@@ -477,15 +469,12 @@ var EVENTS_IL_2026_2027 = [
   { date:'2027-05-12', label:'יום העצמאות (ה׳ אייר) — אין לימודים', type:'holiday' },
 
   // ══ ל"ג בעומר ══
-  // שלישי 25/5 — יום לימודים
   { date:'2027-05-25', label:'ל"ג בעומר (יום לימודים)', type:'holiday' },
 
   // ══ יום ירושלים ══
-  // שישי 4/6 — שישי, אין לימודים ממילא
   { date:'2027-06-04', label:'יום ירושלים (כ"ח אייר, שישי)', type:'holiday' },
 
   // ══ שבועות ══
-  // חמישי-שישי 10-11/6 — לימודים חוזרים ראשון 13/6
   { date:'2027-06-10', label:'ערב שבועות / שבועות א׳', type:'holiday' },
   { date:'2027-06-11', label:'שבועות ב׳ (שישי)', type:'holiday' },
   { date:'2027-06-10', endDate:'2027-06-12', label:'חופשת שבועות', resumeDate:'13/6/2027', type:'vacation' },
@@ -502,10 +491,8 @@ function writeWeeklySchedule(ss, d) {
   var headers = ['#', 'תאריך', 'יום', 'חג / חופשה', 'ירק / אירוע', 'שדה', 'משתל', 'כמות שתילים', 'הערות'];
   var DAY_HE  = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
 
-  // ── בנה ציר זמן מאוחד: שתילות + אירועים ──
   var timeline = [];
 
-  // שתילות
   var weekNum = 0;
   (d.weeks || []).forEach(function(week) {
     weekNum++;
@@ -514,7 +501,6 @@ function writeWeeklySchedule(ss, d) {
     timeline.push({ sortKey: week.date, kind:'planting', week: week, items: items, weekNum: weekNum });
   });
 
-  // אירועים — מסנן לטווח הרלוונטי (אם נשלח firstDate/lastDate, אחרת הכל)
   var firstDate = d.firstDate || '2000-01-01';
   var lastDate  = d.lastDate  || '2099-12-31';
   EVENTS_IL_2026_2027.forEach(function(ev) {
@@ -522,15 +508,12 @@ function writeWeeklySchedule(ss, d) {
     timeline.push({ sortKey: ev.date, kind: ev.type, ev: ev });
   });
 
-  // מיין לפי תאריך
   timeline.sort(function(a,b){ return a.sortKey < b.sortKey ? -1 : a.sortKey > b.sortKey ? 1 : 0; });
 
-  // ── בנה שורות ──
   var rows      = [];
-  var rowMeta   = []; // { bg, bold, italic, borderTop }
+  var rowMeta   = [];
   var rowIndex  = 0;
 
-  // מעקב: האם האירוע כבר הופיע (למנוע כפילויות אם אותו אירוע נופל על שבוע שתילה)
   var shownEvents = {};
 
   timeline.forEach(function(entry) {
@@ -561,13 +544,11 @@ function writeWeeklySchedule(ss, d) {
         });
       });
 
-      // אם אין שתילות לאותו שבוע — שורת placeholder
       if (!entry.items.length) {
         rows.push([entry.weekNum, dateStr, dayStr, holNote, '(אין שתילות)', '', '', '', '']);
         rowMeta.push({ bg: '#f8fafc', bold: false, italic: true, borderTop: true });
       }
 
-      // שורת רווח אחרי כל שבוע שתילה
       rows.push(['','','','','','','','','']);
       rowMeta.push({ bg: '#e2e8f0', bold: false, italic: false, borderTop: false });
 
@@ -593,7 +574,6 @@ function writeWeeklySchedule(ss, d) {
 
   if (!rows.length) return;
 
-  // ── כתוב לגיליון ──
   sh.getRange(1, 1, 1, headers.length).setValues([headers])
     .setBackground('#1e3a2f').setFontColor('#ffffff')
     .setFontWeight('bold').setHorizontalAlignment('center').setFontSize(10);
@@ -613,7 +593,6 @@ function writeWeeklySchedule(ss, d) {
     }
   }
 
-  // ── עיצוב עמודות ──
   sh.setColumnWidth(1, 35);
   sh.setColumnWidth(2, 105);
   sh.setColumnWidth(3, 55);
@@ -624,13 +603,11 @@ function writeWeeklySchedule(ss, d) {
   sh.setColumnWidth(8, 100);
   sh.setColumnWidth(9, 200);
 
-  // ── אגדת צבעים + הערת קירוב ──
   var noteRow = rows.length + 3;
   sh.getRange(noteRow, 1, 1, headers.length).merge()
     .setValue('צהוב = שתילה בשבוע חג  |  כתום = חג  |  סגול = חופשת לימודים  |  * תאריכים בקירוב — יש לאמת')
     .setFontColor('#6b7280').setFontStyle('italic').setFontSize(8).setHorizontalAlignment('right');
 
-  // ── כותרת ראשית ──
   sh.insertRowBefore(1);
   sh.getRange(1, 1, 1, headers.length).merge()
     .setValue('לוח שתילה — ' + (d.season || '') + ' | שתילות: ימי שני')
