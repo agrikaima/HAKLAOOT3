@@ -309,9 +309,9 @@ function writeFieldMap(ss, d) {
     }
 
     if (g.type === 'pair') {
-      _renderBlock(sheet, g.right, row, 1,                          BED_COL_W, FIELD_BG);
-      _renderBlock(sheet, g.left,  row, g.right.beds + GAP + 1,    BED_COL_W, FIELD_BG);
-    } else {
+    _renderBlock(sheet, g.right, row, 1, BED_COL_W, FIELD_BG);
+      row += 3;
+      _renderBlock(sheet, g.left,  row, 1, BED_COL_W, FIELD_BG);
       _renderBlock(sheet, g.field, row, 1, BED_COL_W, FIELD_BG);
     }
     row += 3; // header + bed# row + content row
