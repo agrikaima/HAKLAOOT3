@@ -4603,34 +4603,16 @@ function showToast(msg,type='') {
             document.getElementById('comparisonTableBody').innerHTML = '';
         }
     };
-
-    document.getElementById('toggleComparison')?.addEventListener('click', function() {
+const toggleBtn = document.getElementById('toggleComparison');
+if (toggleBtn) {
+    toggleBtn.addEventListener('click', function() {
         const panel = document.getElementById('comparisonPanel');
-        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-        this.textContent = panel.style.display === 'none' ? '▼' : '▲';
+        if (panel.style.display === 'none') {
+            panel.style.display = 'block';
+            this.textContent = '▲';
+        } else {
+            panel.style.display = 'none';
+            this.textContent = '▼';
+        }
     });
-
-    document.getElementById('comparisonWordFile')?.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        document.getElementById('wordFileStatus').innerHTML = '⏳ קורא...';
-        comparisonModule.state.wordData = await comparisonModule.parseWordFile(file);
-        document.getElementById('wordFileStatus').innerHTML = `✓ ${comparisonModule.state.wordData.length}`;
-    });
-
-    document.getElementById('comparisonPdfFile')?.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        document.getElementById('pdfFileStatus').innerHTML = '⏳ קורא...';
-        comparisonModule.state.pdfData = await comparisonModule.parsePdfFile(file);
-        document.getElementById('pdfFileStatus').innerHTML = `✓ ${comparisonModule.state.pdfData.length}`;
-        comparisonModule.updateComparison();
-    });
-
-    document.getElementById('comparisonDownloadBtn')?.addEventListener('click', () => comparisonModule.downloadCSV());
-    document.getElementById('comparisonResetBtn')?.addEventListener('click', () => comparisonModule.reset());
-</script>
-</body>
-
-</body>
-</html>
+}
