@@ -526,7 +526,28 @@
 
 <!-- ══════════ ORDERS ══════════ -->
 <div id="view-orders" class="view">
-
+<div class="card">
+                        <div class="section-label">📦 השוואת הזמנות חישתיל</div>
+                        
+                        <div style="margin: 20px 0;">
+                            <p style="font-weight: bold; margin-bottom: 10px;">העלה קבצים:</p>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                                <div>
+                                    <label style="display: block; font-weight: bold; margin-bottom: 8px;">📄 קובץ Word</label>
+                                    <input type="file" id="wordFileInput" accept=".docx">
+                                    <span id="wordFileStatus" style="font-size: 12px; color: #7f8c8d; display: block; margin-top: 5px;"></span>
+                                </div>
+                                <div>
+                                    <label style="display: block; font-weight: bold; margin-bottom: 8px;">📋 קובץ PDF</label>
+                                    <input type="file" id="pdfFileInput" accept=".pdf">
+                                    <span id="pdfFileStatus" style="font-size: 12px; color: #7f8c8d; display: block; margin-top: 5px;"></span>
+                                </div>
+                            </div>
+                            <button id="compareBtn" style="width: 100%; background: #3498db; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">🔍 השוואה</button>
+                        </div>
+                        
+                        <div id="comparisonResult" style="margin-top: 20px;"></div>
+                    </div>
   <!-- ⓪ מחשבון מהיר -->
   <div class="card" style="background:linear-gradient(135deg,#f0fdf4,#fff);border:2px solid var(--g4)">
     <div class="section-label">📐 מחשבון — כמה מטר ערוגות צריך?</div>
@@ -4267,6 +4288,117 @@ function showToast(msg,type='') {
   t.textContent=msg;t.className='show'+(type?' '+type:'');
   clearTimeout(t._tid);t._tid=setTimeout(()=>{t.className='';},2800);
 }
-</script>
+let wordData = [];
+        let pdfData = [];
+        
+        document.getElementById('wordFileInput').addEventListener('change', async (e) => {
+            try {
+                document.getElementById('wordFileStatus').textContent = '⏳ קורא...';
+                const zip = new JSZip();
+                const zipContent = await zip.loadAsync(e.target.files[0]);
+                const xmlContent = await zipContent.file('word/document.xml').async('text');
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(xmlContent, 'text/xml');
+                
+                const tables = xmlDoc.getElementsByTagName('w:tbl');
+                if (tables.length === 0) throw new Error('לא נמצאה טבלה בקובץ');
+                
+                const table = tables[0];
+                const rows = table.getElementsByTagName('w:tr');
+                wordData = [];
+                
+                for (let i = 1; i < rows.length; i++) {
+                    const cells = rows[i].getElementsByTagName('w:tc');
+                    if (cells.length < 6) continue;
+                    
+                    const getCellText = (idx) => {
+                        if (idx >= cells.length) return '';
+                        const textNodes = cells[idx].getElementsByTagName('w:t');
+                        let text = '';
+                        for (let j = 0; j < textNodes.length; j++) {
+                            text += textNodes[j].textContent;
+                        }
+                        return text.trim();
+                    };
+                    
+                    const date = getCellText(1);
+                    const veggie = getCellText(3);
+                    const variety = getCellText(4);
+                    const trays = parseInt(getCellText(5)) || 0;
+                    
+                    if (date && veggie && trays > 0) {
+                        wordData.push({ date, veggie, variety, trays });
+                    }
+                }
+                
+                document.getElementById('wordFileStatus').textContent = `✓ ${wordData.length} הזמנות`;
+                showToast(`✓ Word קרא: ${wordData.length} הזמנות`, 'success');
+            } catch (err) {
+                document.getElementById('wordFileStatus').textContent = '✗ שגיאה';
+                showToast('❌ שגיאה בקריאת Word: ' + err.message, 'error');
+            }
+        });
+        
+        document.getElementById('pdfFileInput').addEventListener('change', async (e) => {
+            try {
+                document.getElementById('pdfFileStatus').textContent = '⏳ קורא...';
+                const arrayBuffer = await e.target.files[0].arrayBuffer();
+                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                pdfData = [];
+                
+                for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
+                    const page = await pdfDoc.getPage(pageNum);
+                    const textContent = await page.getTextContent();
+                    
+                    let lastDate = null;
+                    for (let i = 0; i < textContent.items.length; i++) {
+                        const item = textContent.items[i];
+                        const text = item.str.trim();
+                        
+                        if (text.match(/^(\d{1,2})[\.\/](\d{1,2})[\.\/](\d{2,4})$/)) {
+                            lastDate = text;
+                        } else if (text.match(/^\d+$/) && lastDate) {
+                            const num = parseInt(text);
+                            if (num > 0 && num < 500) {
+                                pdfData.push({ date: lastDate, trays: num });
+                                lastDate = null;
+                            }
+                        }
+                    }
+                }
+                
+                document.getElementById('pdfFileStatus').textContent = `✓ ${pdfData.length} הזמנות`;
+                showToast(`✓ PDF קרא: ${pdfData.length} הזמנות`, 'success');
+            } catch (err) {
+                document.getElementById('pdfFileStatus').textContent = '✗ שגיאה';
+                showToast('❌ שגיאה בקריאת PDF: ' + err.message, 'error');
+            }
+        });
+        
+        document.getElementById('compareBtn').addEventListener('click', () => {
+            if (wordData.length === 0 || pdfData.length === 0) {
+                showToast('⚠️ אנא העלה את שני הקבצים', 'error');
+                return;
+            }
+            
+            let html = '<table class="table"><thead><tr><th>#</th><th>תאריך</th><th>ירק</th><th>זן</th><th>Word</th><th>PDF</th><th>סטטוס</th></tr></thead><tbody>';
+            
+            let matchCount = 0;
+            for (let i = 0; i < Math.max(wordData.length, pdfData.length); i++) {
+                const w = wordData[i];
+                const p = pdfData[i];
+                const match = (w && p && w.trays === p.trays) ? '✓' : '✗';
+                const rowClass = match === '✓' ? 'match' : 'mismatch';
+                
+                if (match === '✓') matchCount++;
+                
+                html += `<tr class="${rowClass}">
+                    <td>${i + 1}</td>
+                    <td>${w ? w.date : '-'}</td>
+                    <td>${w ? w.veggie : '-'}</td>
+                    <td>${w ? w.variety : '-'}</td>
+                    <td><strong>${w ? w.trays : '-'}</strong></td>
+                    <td><strong>${p ? p.trays :</script>
 </body>
 </html>
