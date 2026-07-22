@@ -4288,7 +4288,12 @@ function showToast(msg,type='') {
   t.textContent=msg;t.className='show'+(type?' '+type:'');
   clearTimeout(t._tid);t._tid=setTimeout(()=>{t.className='';},2800);
 }
-let wordData = [];
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfjs-lib/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+  let wordData = [];
         let pdfData = [];
         
         document.getElementById('wordFileInput').addEventListener('change', async (e) => {
