@@ -4292,7 +4292,15 @@ function showToast(msg,type='') {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfjs-lib/3.11.174/pdf.min.js"></script>
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    
+    function switchTab(tabName) {
+            const views = document.querySelectorAll('.view');
+            views.forEach(view => view.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active');
+            
+            const btns = document.querySelectorAll('.tab-btn');
+            btns.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+        }
   let wordData = [];
         let pdfData = [];
         
