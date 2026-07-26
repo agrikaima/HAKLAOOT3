@@ -5269,36 +5269,6 @@ function showToast(msg,type='') {
 </div>
 <div id="toast"></div>
 
-<script>
-
-let procurements   = JSON.parse(localStorage.getItem('procurements')   || '[]');
-let plantSpecies   = JSON.parse(localStorage.getItem('plantSpecies')   || '[]');
-let plantDefs      = JSON.parse(localStorage.getItem('plantDefs')      || '[]');
-// normalize season strings on load and save back if changed
-(function() {
-  var changed = false;
-  plantDefs.forEach(function(d) {
-    var n = normSeason(d.season);
-    if (n !== d.season) { d.season = n; changed = true; }
-  });
-  if (changed) localStorage.setItem('plantDefs', JSON.stringify(plantDefs));
-})();
-let _rotPaintCrop   = null;
-let _rotPaintWave   = 1;
-let _rotPaintOrient = 'along'; // 'along' = לאורך (שלוחות מלאות), 'across' = לרוחב (רוחב מלא, אורך חלקי)
-const _rotCropColors = {};
-const CROP_PALETTE = ['#16a34a','#7c3aed','#0891b2','#b45309','#ea580c','#be123c','#0d9488','#4d7c0f','#1d4ed8','#9a3412','#6b21a8','#0369a1'];
-let orderOverrides = JSON.parse(localStorage.getItem('orderOverrides') || '{}');
-let rotationPlan   = JSON.parse(localStorage.getItem('rotationPlan')   || '{}');
-var _rotUndoStack = [JSON.stringify(rotationPlan)]; // initialize with current saved state
-let rotationNotes    = JSON.parse(localStorage.getItem('rotationNotes')    || '{}');
-let rotationDelivery  = JSON.parse(localStorage.getItem('rotationDelivery')  || '{}');
-let rotationClearance = JSON.parse(localStorage.getItem('rotationClearance') || '{}');
-let rotationGrowDays  = JSON.parse(localStorage.getItem('rotationGrowDays')  || '{}');
-let settings       = JSON.parse(localStorage.getItem('settings')       || '{}');
-let activeFilter   = '';
-if (!settings.fields)   settings.fields   = [];
-if (!settings.procCats) settings.procCats = ['השקייה','גרעיני חמניה','כללי'];
 
 // ── הגדרות חלקות קבועות ─────────────────────────
 const FIELD_DEFS = [
