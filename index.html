@@ -20,7 +20,7 @@
 
     header{background:var(--g1);color:#fff;padding:14px 18px 10px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2)}
     header h1{font-size:1.25rem;font-weight:700}
-    header p{font-size:.75rem;opacity:.7;margin-top:2px}
+     p{font-size:.75rem;opacity:.7;margin-top:2px}
 
     nav{display:flex;background:var(--g2);position:sticky;top:56px;z-index:99;overflow-x:auto;-webkit-overflow-scrolling:touch}
     nav::-webkit-scrollbar{display:none}
@@ -152,7 +152,7 @@
     .search-wrap{margin-bottom:10px}
     .search-wrap input{padding:9px 12px}
 
-    /* season header in list */
+    /* season  in list */
     .season-group-title{font-size:.82rem;font-weight:700;color:var(--muted);margin:16px 0 6px;padding-bottom:4px;border-bottom:2px solid var(--g5)}
 
     /* edit modal */
@@ -220,7 +220,10 @@
   </style>
 </head>
 <body>
-
+<header>
+  <h1>🌿 שלושה ברושים ירוקים-רשי</h1>
+  <p>חומר לטיפול</p>
+</header>
   
 <nav>
   <button class="active" onclick="switchTab('add')">🌱 שתילה</button>
@@ -2344,7 +2347,7 @@ function renderRotationNeeds(season) {
              effectiveBedLen:effectiveBedLen };
   });
 
-  // header
+  // 
   var cancelBtn = paintActive
     ? '<button onclick="selectPaintCrop(null)" style="font-size:.72rem;padding:3px 10px;border:1px solid var(--border);border-radius:12px;cursor:pointer;background:#fff">❌ בטל בחירה</button>'
     : '';
