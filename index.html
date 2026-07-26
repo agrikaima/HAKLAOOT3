@@ -7097,13 +7097,6 @@ async function exportWeeklyScheduleToSheets() {
   showToast(ok ? '✓ לוח שתילה נוצר ב-Sheets' : 'שגיאה בשליחה', ok ? '' : 'err');
 }
 
-// ── Delete ────────────────────────────────────
-function deleteRec(id) {
-  if (!confirm('למחוק רשומה זו?')) return;
-  plantings = plantings.filter(p=>p.id!==id);
-  save(); renderList();
-  showToast('נמחק');
-}
 
 // ── Plant Defs & Order Calculator ─────────────
 
