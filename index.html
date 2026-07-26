@@ -4223,9 +4223,7 @@ async function testConn() {
 
 function updateConnStatus() {
   const dot=document.getElementById('connDot'),txt=document.getElementById('connText');
-  if (settings.scriptUrl) { dot.className='sdot ok'; txt.textContent='Sheets מוגדר'; document.getElementById('syncStatus').textContent='מחובר ל-Google Sheets'; }
-  else { dot.className='sdot'; txt.textContent='לא מוגדר'; document.getElementById('syncStatus').textContent='לא מחובר ל-Sheets'; }
-}
+  if (!dot || !txt) return;
 
 function clearData() {
   if (!confirm('למחוק את כל הנתונים?')) return;
