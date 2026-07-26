@@ -5370,19 +5370,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function today() { return new Date().toISOString().split('T')[0]; }
 
 // ── Tabs ──────────────────────────────────────
-function switchTab(tab) {
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
-  document.getElementById('view-' + tab).classList.add('active');
-  event.currentTarget.classList.add('active');
-  if (tab === 'list')        renderList();
-  if (tab === 'tasks')       renderTasksList();
-  if (tab === 'procurement') { renderProcCatSelect(); renderProcList(); renderProcSupplierList(); renderWishlist(); }
-  if (tab === 'orders')      { renderOrderFieldSelect(); renderCalcFieldSelect(); renderSpeciesSelect(); renderSpeciesList(); renderOrderSeasonFilter(); renderOrderTable(); }
-  if (tab === 'rotation')    { renderRotationSeasons(); renderRotation(); }
-  if (tab === 'finance')     { renderFinance(); }
-  if (tab === 'settings')    { renderFieldDefsList(); renderFieldsList(); renderProcCatList(); }
-}
+
 
 // ── Record type toggle ─────────────────────────
 function setRecType(type) {
@@ -5395,16 +5383,8 @@ function setEditRecType(type) {
 }
 
 // ── Field (חלקה) management ───────────────────
-function renderFieldSelects() {
-  const opts = ['<option value="">— בחר חלקה —</option>',
-    ...settings.fields.map(f => `<option value="${escAttr(f)}">${escHtml(f)}</option>`)
-  ].join('');
-  document.getElementById('f-field').innerHTML = opts;
-  document.getElementById('e-field').innerHTML = opts;
-  const tField = document.getElementById('t-field');
-  if (tField) tField.innerHTML = '<option value="">— כללי —</option>' +
-    settings.fields.map(f=>`<option value="${escAttr(f)}">${escHtml(f)}</option>`).join('');
-}
+
+ 
 
 function saveFieldDefs() {
   localStorage.setItem('fieldDefs', JSON.stringify(FIELD_DEFS));
@@ -5456,16 +5436,8 @@ function removeFieldDef(i) {
   renderFieldDefsList();
 }
 
-function renderFieldsList() {
-  const el = document.getElementById('fieldsList');
-  if (!el) return;
-  if (!settings.fields.length) { el.innerHTML = '<p style="font-size:.82rem;color:var(--muted)">אין חלקות מוגדרות עדיין</p>'; return; }
-  el.innerHTML = settings.fields.map((f,i) => `
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)">
-      <span style="font-size:.9rem">${escHtml(f)}</span>
-      <button class="btn-ghost del" onclick="removeField(${i})">✕</button>
-    </div>`).join('');
-}
+
+
 
 function addField() {
   const input = document.getElementById('newFieldInput');
@@ -5547,7 +5519,7 @@ async function savePlanting() {
 }
 
 // ── Render list ────────────────────────────────
-function renderList() {
+    
   const search = (document.getElementById('searchInput')?.value || '').toLowerCase();
   let filtered = [...plantings];
   if (activeFilter) filtered = filtered.filter(p => p.season === activeFilter);
@@ -5944,14 +5916,8 @@ function updateSpeciesPrice(name, val) {
   localStorage.setItem('plantSpecies', JSON.stringify(plantSpecies));
 }
 
-function normSeason(s) {
-  return (s||'').trim()
-    .replace(/[‐–—―−]/g,'-')   // normalize all dash types to hyphen
-    .replace(/\s+/g,' ')         // collapse multiple spaces
-    .replace(/סתיו\s+חורף/g,'סתיו-חורף')   // "סתיו חורף" → "סתיו-חורף"
-    .replace(/אביב\s+קיץ/g,'אביב-קיץ');    // "אביב קיץ" → "אביב-קיץ"
-}
-function renderRotationSeasons() {
+
+    
   const input = document.getElementById('rot-plan-season');
   if (!input) return;
   const seasons = [...new Set([
@@ -7199,7 +7165,7 @@ function calcFillFromField() {
   if (fd) { document.getElementById('calc-bedlen').value = fd.len; calcBeds(); }
 }
 
-function renderCalcFieldSelect() {
+
   const sel = document.getElementById('calc-field');
   if (!sel) return;
   sel.innerHTML = '<option value="">— בחר חלקה —</option>' +
@@ -8174,18 +8140,8 @@ function renderProcSupplierList() {
   document.getElementById('p-supplier-list').innerHTML = suppliers.map(s=>`<option value="${escAttr(s)}">`).join('');
 }
 
-function addProcCat() {
-  const input = document.getElementById('newProcCat');
-  const name = input.value.trim();
-  if (!name) return;
-  if (settings.procCats.includes(name)) { showToast('קטגוריה קיימת','err'); return; }
-  settings.procCats.push(name);
-  saveSettings(false);
-  input.value = '';
-  renderProcCatSelect();
-  renderProcCatList();
-  showToast('קטגוריה נוספה');
-}
+
+
 
 function renderProcCatList() {
   const el = document.getElementById('procCatList');
@@ -8225,7 +8181,7 @@ async function sendToSheets(rec) {
   }
 }
 
-async function syncAll() {
+
   const pending = plantings.filter(p=>!p.synced);
   if (!pending.length) { showToast('אין ממתינים לסנכרון'); return; }
   if (!settings.scriptUrl) { showToast('הגדר Sheets URL תחילה','err'); return; }
@@ -8241,7 +8197,7 @@ async function syncAll() {
 }
 
 // ── Settings ──────────────────────────────────
-function exportAllData() {
+
   const keys = ['plantSpecies','plantDefs','plantings','rotationPlan','rotationNotes','rotationDelivery','rotationClearance','orderOverrides','settings','tasks'];
   const data = { _version: 1, _exported: new Date().toISOString(), _farm: settings.farmName || 'שלושה ברושים ירוקים-ראשי' };
   keys.forEach(k => { try { data[k] = JSON.parse(localStorage.getItem(k) || 'null'); } catch(e){} });
@@ -8254,7 +8210,7 @@ function exportAllData() {
   document.getElementById('backup-info').textContent = '✓ גיבוי יוצא בהצלחה — ' + new Date().toLocaleString('he-IL');
 }
 
-function exportCatalogCSV() {
+
   var defs = JSON.parse(localStorage.getItem('plantDefs') || '[]');
   if (!defs.length) { alert('אין נתוני קטלוג לייצוא'); return; }
 
@@ -8333,7 +8289,7 @@ function exportCatalogCSV() {
   a.click();
 }
 
-async function exportCatalogToSheets() {
+
   if (!settings.scriptUrl) { showToast('הגדר Sheets URL תחילה','err'); return; }
   var defs = JSON.parse(localStorage.getItem('plantDefs') || '[]');
   if (!defs.length) { showToast('אין נתוני קטלוג לייצוא','err'); return; }
@@ -8381,7 +8337,7 @@ async function exportCatalogToSheets() {
   showToast(ok ? '✓ קטלוג נשלח ל-Sheets — לשונית "קטלוג ירקות"' : 'שגיאה בשליחה', ok ? '' : 'err');
 }
 
-function importAllData(input) {
+
   const file = input.files[0];
   if (!file) return;
   const reader = new FileReader();
@@ -8401,7 +8357,7 @@ function importAllData(input) {
   input.value = '';
 }
 
-function saveSettings(toast=true) {
+
   const urlEl = document.getElementById('cfg-url');
   if (urlEl) settings.scriptUrl = urlEl.value.trim();
   localStorage.setItem('settings', JSON.stringify(settings));
@@ -8409,7 +8365,7 @@ function saveSettings(toast=true) {
   if (toast) showToast('נשמר');
 }
 
-async function testConn() {
+
   const url = document.getElementById('cfg-url').value.trim();
   if (!url) { showToast('הזן URL תחילה','err'); return; }
   if (!url.includes('/exec')) {
@@ -8449,11 +8405,7 @@ async function testConn() {
   }
 }
 
-function updateConnStatus() {
-  const dot=document.getElementById('connDot'),txt=document.getElementById('connText');
-  if (settings.scriptUrl) { dot.className='sdot ok'; txt.textContent='Sheets מוגדר'; document.getElementById('syncStatus').textContent='מחובר ל-Google Sheets'; }
-  else { dot.className='sdot'; txt.textContent='לא מוגדר'; document.getElementById('syncStatus').textContent='לא מחובר ל-Sheets'; }
-}
+  
 
 function clearData() {
   if (!confirm('למחוק את כל הנתונים?')) return;
@@ -8461,7 +8413,7 @@ function clearData() {
 }
 
 // ── Helpers ───────────────────────────────────
-function save() { localStorage.setItem('plantings',JSON.stringify(plantings)); }
+
 function formatDate(d) { if(!d)return'';const[y,m,day]=d.split('-');return`${day}/${m}/${y}`; }
 function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function escAttr(s) { return escHtml(s); }
@@ -8478,7 +8430,7 @@ const DEFAULT_SEASONS = [
   'עונה קודמת'
 ];
 
-function renderAutocomplete() {
+
   const varieties=[...new Set(plantings.map(p=>p.variety).filter(Boolean))];
   const savedSeasons=[...new Set(plantings.map(p=>p.season))];
   const allSeasons=[...new Set([...DEFAULT_SEASONS,...savedSeasons])].filter(Boolean);
@@ -8487,7 +8439,7 @@ function renderAutocomplete() {
   document.getElementById('season-list').innerHTML=allSeasons.map(n=>`<option value="${escAttr(n)}">`).join('');
 }
 
-function showToast(msg,type='') {
+
   const t=document.getElementById('toast');
   t.textContent=msg;t.className='show'+(type?' '+type:'');
   clearTimeout(t._tid);t._tid=setTimeout(()=>{t.className='';},2800);
