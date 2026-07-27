@@ -829,6 +829,16 @@
       <div>
         <label>עונה</label>
         <input type="text" id="fin-season" placeholder="אביב-קיץ 2027" list="season-list" oninput="renderFinance()">
+        <div>
+        <label>מחיר לשתיל</label>
+        <input type="number" id="fin-price-per-unit" placeholder="0" oninput="renderFinance()">
+          <div>
+        <label>
+          <input type="checkbox" id="fin-vat-enabled" onchange="renderFinance()">
+          הוסף 18% מע"מ
+        </label>
+      </div>
+      </div>
       </div>
     </div>
   </div>
