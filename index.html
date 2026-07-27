@@ -829,15 +829,7 @@
       <div>
         <label>עונה</label>
         <input type="text" id="fin-season" placeholder="אביב-קיץ 2027" list="season-list" oninput="renderFinance()">
-        <div>
-        <label>מחיר לשתיל</label>
-        <input type="number" id="fin-price-per-unit" placeholder="0" oninput="renderFinance()">
-          <div>
-        <label>
-          <input type="checkbox" id="fin-vat-enabled" onchange="renderFinance()">
-          הוסף 18% מע"מ
-        </label>
-      </div>
+        
       </div>
       </div>
     </div>
@@ -1676,16 +1668,22 @@ function renderFinance() {
     const trays = Math.ceil(totalPlants / TRAY);
     const sp = plantSpecies.find(s => s.id === d.speciesId);
     const price = sp?.price || 0;
-    const cost = trays * price;
+    const unitPrice = sp?.unitPrice || 0; const cost = unitPrice ? (totalPlants * unitPrice) : (trays * price);
     totalCost += cost;
     return { name: d.name, field: d.field||'—', waves: d.waves, totalPlants, trays, price, cost };
   });
 
   let html = `<div class="card">
     <div class="section-label">📋 פירוט לעונה: ${escHtml(season)}</div>
+    <div style="margin-bottom:10px">
+  <label>
+    <input type="checkbox" id="fin-vat-enabled" onchange="renderFinance()">
+    הוסף 18% מע"מ
+  </label>
+</div>
     <table class="order-table">
       <thead><tr>
-        <th>ירק</th><th>אזור</th><th>משתלים</th><th>שתילים</th><th>מגשים</th><th>מחיר מגש</th><th>עלות</th>
+        <th>ירק</th><th>אזור</th><th>משתלים</th><th>שתילים</th><th>מגשים</th><th>מחיר מגש</th><th>מחיר לשתיל</th><th>עלות</th>
       </tr></thead><tbody>`;
 
   rows.forEach(r => {
@@ -1700,18 +1698,25 @@ function renderFinance() {
           onchange="updateSpeciesPrice('${escAttr(r.name)}',this.value);renderFinance()"
           onclick="this.select()" style="width:70px">
       </td>
+      <td class="editable" style="min-width:80px">
+  <input type="number" value="${r.unitPrice||''}" placeholder="₪" min="0" step="0.5"
+    onchange="renderFinance()" onclick="this.select()" style="width:70px">
+</td>
       <td style="font-weight:600">${r.price ? '₪'+r.cost.toFixed(0) : '—'}</td>
     </tr>`;
   });
 
   html += `</tbody></table></div>`;
 
-  if (totalCost > 0) {
+ if (totalCost > 0) {
+    const vatChecked = document.getElementById('fin-vat-enabled')?.checked;
+    const vat = vatChecked ? totalCost * 0.18 : 0;
+    const totalWithVat = totalCost + vat;
     html += `<div style="background:var(--g1);color:#fff;border-radius:10px;padding:14px 16px;margin-top:10px;font-weight:700;font-size:1rem">
-      💸 סה"כ עלות שתילים לעונה: ₪${totalCost.toFixed(0)}
-    </div>`;
+      💸 סה"כ עלות: ₪${totalCost.toFixed(0)}`;
+    if (vatChecked) html += `<br>מע"מ 18%: ₪${vat.toFixed(0)}<br>סה"כ עם מע"מ: ₪${totalWithVat.toFixed(0)}`;
+    html += `</div>`;
   }
-
   el.innerHTML = html;
 }
 
@@ -1721,7 +1726,10 @@ function updateSpeciesPrice(name, val) {
   sp.price = parseFloat(val) || 0;
   localStorage.setItem('plantSpecies', JSON.stringify(plantSpecies));
 }
-
+function updateSpeciesUnitPrice(name, val) {
+  const sp = plantSpecies.find(s => s.name === name);
+  if (sp) sp.unitPrice = val ? parseFloat(val) : 0;
+}
 function normSeason(s) {
   return (s||'').trim()
     .replace(/[‐–—―−]/g,'-')   // normalize all dash types to hyphen
