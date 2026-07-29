@@ -1011,6 +1011,7 @@
 
 <script>
 let plantings      = JSON.parse(localStorage.getItem('plantings')      || '[]');
+let financeData    = JSON.parse(localStorage.getItem('financeData')    || '{}');  
 let tasks          = JSON.parse(localStorage.getItem('tasks')          || '[]');
 let procurements   = JSON.parse(localStorage.getItem('procurements')   || '[]');
 let plantSpecies   = JSON.parse(localStorage.getItem('plantSpecies')   || '[]');
@@ -4269,7 +4270,7 @@ function syncToSheets() {
     method: 'POST',
     body: JSON.stringify({
       action: 'syncData',
-      data: { plantings, tasks, plantSpecies, plantDefs, settings, procurements: procurements }
+      data: { plantings, tasks, plantSpecies, plantDefs, settings, procurements: procurements, financeData }
     })
   }).catch(e => console.log('Sync error:', e));
 }
