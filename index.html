@@ -1670,7 +1670,7 @@ function renderFinance() {
     const price = sp?.price || 0;
     const unitPrice = sp?.unitPrice || 0; const cost = unitPrice ? (totalPlants * unitPrice) : (trays * price);
     totalCost += cost;
-    return { name: d.name, field: d.field||'—', waves: d.waves, totalPlants, trays, price, cost };
+    return { name: d.name, field: d.field||'—', waves: d.waves, totalPlants, trays, price, unitPrice, cost };
   });
 
   let html = `<div class="card">
@@ -1700,7 +1700,7 @@ function renderFinance() {
       </td>
       <td class="editable" style="min-width:80px">
   <input type="number" value="${r.unitPrice||''}" placeholder="₪" min="0" step="0.5"
-    onchange="renderFinance()" onclick="this.select()" style="width:70px">
+   onchange="updateSpeciesUnitPrice('${escAttr(r.name)}', this.value); renderFinance()" onclick="this.select()" style="width:70px">
 </td>
       <td style="font-weight:600">${r.price ? '₪'+r.cost.toFixed(0) : '—'}</td>
     </tr>`;
@@ -1708,7 +1708,7 @@ function renderFinance() {
 
   html += `</tbody></table></div>`;
 
- if (totalCost > 0) {
+if (totalCost > 0) {
     const vatChecked = document.getElementById('fin-vat-enabled')?.checked;
     const vat = vatChecked ? totalCost * 0.18 : 0;
     const totalWithVat = totalCost + vat;
@@ -1716,10 +1716,15 @@ function renderFinance() {
       💸 סה"כ עלות: ₪${totalCost.toFixed(0)}`;
     if (vatChecked) html += `<br>מע"מ 18%: ₪${vat.toFixed(0)}<br>סה"כ עם מע"מ: ₪${totalWithVat.toFixed(0)}`;
     html += `</div>`;
+    html += `<div style="margin-top:10px">
+      <label>
+        <input type="checkbox" id="fin-vat-enabled" onchange="renderFinance()">
+        הוסף 18% מע"מ
+      </label>
+    </div>`;
   }
   el.innerHTML = html;
 }
-
 function updateSpeciesPrice(name, val) {
   const sp = plantSpecies.find(s => s.name === name);
   if (!sp) return;
