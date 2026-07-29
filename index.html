@@ -4289,4 +4289,15 @@ function showToast(msg,type='') {
 }
 </script>
 </body>
+ <script>
+setInterval(() => {
+  fetch('/index.html?t=' + Date.now())
+    .then(r => r.text())
+    .then(html => {
+      if (html !== document.documentElement.outerHTML) {
+        location.reload();
+      }
+    });
+}, 60000);
+</script> 
 </html>
