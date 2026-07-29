@@ -1676,11 +1676,7 @@ function renderFinance() {
   let html = `<div class="card">
     <div class="section-label">📋 פירוט לעונה: ${escHtml(season)}</div>
     <div style="margin-bottom:10px">
-  <label>
-    <input type="checkbox" id="fin-vat-enabled" onchange="renderFinance()">
-    הוסף 18% מע"מ
-  </label>
-</div>
+  
     <table class="order-table">
       <thead><tr>
         <th>ירק</th><th>אזור</th><th>משתלים</th><th>שתילים</th><th>מגשים</th><th>מחיר מגש</th><th>מחיר לשתיל</th><th>עלות</th>
@@ -1702,7 +1698,7 @@ function renderFinance() {
   <input type="number" value="${r.unitPrice||''}" placeholder="₪" min="0" step="0.5"
    onchange="updateSpeciesUnitPrice('${escAttr(r.name)}', this.value); renderFinance()" onclick="this.select()" style="width:70px">
 </td>
-      <td style="font-weight:600">${r.price ? '₪'+r.cost.toFixed(0) : '—'}</td>
+      <td style="font-weight:600">${(r.price || r.unitPrice) ? '₪'+r.cost.toFixed(0) : '—'}</td>
     </tr>`;
   });
 
