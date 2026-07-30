@@ -231,6 +231,7 @@
   <button onclick="switchTab('list')">📋 שתילות</button>
   <button onclick="switchTab('tasks')">✅ משימות</button>
   <button onclick="switchTab('procurement')">🛒 רכש</button>
+  <button onclick="switchTab('inventory')">📊 מלאי <span id="invNavBadge" style="display:none;background:#dc2626;color:#fff;border-radius:10px;padding:0 6px;font-size:.7rem;font-weight:700"></span></button>
   <button onclick="switchTab('orders')">📦 הזמנות</button>
   <button onclick="switchTab('finance')">💰 כספים</button>
   <button onclick="switchTab('rotation')">🗺️ רוטציה</button>
@@ -524,6 +525,96 @@
   <div id="procList"></div>
 </div>
 </div>
+<!-- ══════════ INVENTORY ══════════ -->
+<div id="view-inventory" class="view">
+
+  <!-- התראות מלאי נמוך -->
+  <div id="invAlerts"></div>
+
+  <!-- סיכום -->
+  <div class="stats-grid">
+    <div class="stat"><div class="stat-n" id="inv-st-total">0</div><div class="stat-l">פריטים</div></div>
+    <div class="stat" style="background:#b45309"><div class="stat-n" id="inv-st-low">0</div><div class="stat-l">מלאי נמוך</div></div>
+    <div class="stat" style="background:#0369a1"><div class="stat-n" id="inv-st-value">₪0</div><div class="stat-l">שווי מוערך</div></div>
+  </div>
+
+  <!-- פריט מלאי חדש -->
+  <div class="card">
+    <div class="section-label">➕ פריט מלאי חדש</div>
+    <div class="fg g2">
+      <div>
+        <label>קטגוריה</label>
+        <select id="inv-cat"></select>
+      </div>
+      <div>
+        <label>שם פריט</label>
+        <input type="text" id="inv-name" placeholder="טפטפת 16 מ״מ..." list="inv-name-list">
+        <datalist id="inv-name-list"></datalist>
+      </div>
+    </div>
+    <div class="fg g3">
+      <div>
+        <label>כמות נוכחית</label>
+        <input type="number" id="inv-qty" placeholder="0" min="0" step="0.01">
+      </div>
+      <div>
+        <label>יחידה</label>
+        <input type="text" id="inv-unit" placeholder='יח׳, ק"ג, מ׳...'>
+      </div>
+      <div>
+        <label>סף התראה <span class="tip" data-tip="כשהכמות יורדת לערך הזה או מתחתיו — הפריט יסומן כמלאי נמוך ותופיע התראה."></span></label>
+        <input type="number" id="inv-min" placeholder="0" min="0" step="0.01">
+      </div>
+    </div>
+    <div class="fg g2">
+      <div>
+        <label>מיקום אחסון</label>
+        <input type="text" id="inv-loc" placeholder="מחסן, קונטיינר..." list="inv-loc-list">
+        <datalist id="inv-loc-list"></datalist>
+      </div>
+      <div>
+        <label>מחיר ליחידה (₪)</label>
+        <input type="number" id="inv-price" placeholder="0" min="0" step="0.01">
+      </div>
+    </div>
+    <div class="fg">
+      <label>הערות</label>
+      <textarea id="inv-notes" placeholder="דגם, ספק, מפרט..." style="min-height:45px"></textarea>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" id="inv-save-btn" onclick="saveInvItem()" style="flex:1">שמור פריט</button>
+      <button class="btn btn-outline" onclick="clearInvForm()" style="width:auto;padding:12px 14px">ביטול</button>
+    </div>
+    <input type="hidden" id="inv-edit-id">
+  </div>
+
+  <!-- ייבוא מהרכש -->
+  <div class="card" style="background:#eff6ff;border-color:#bfdbfe">
+    <div class="section-label" style="color:#1e40af">🔄 בנייה מרשומות הרכש</div>
+    <p style="font-size:.8rem;color:#1e3a8a;margin-bottom:10px;line-height:1.6">
+      סוכם את כל רשומות הרכש לפי שם פריט ויוצר מהן פריטי מלאי. פריטים שכבר קיימים במלאי לא ישתנו — רק פריטים חדשים יתווספו.
+    </p>
+    <button class="btn btn-outline" onclick="buildInvFromProcurement()" style="border-color:#1d4ed8;color:#1d4ed8">📥 ייבא מהרכש</button>
+    <div id="inv-import-info" style="font-size:.76rem;color:#1e3a8a;margin-top:8px"></div>
+  </div>
+
+  <!-- חיפוש וסינון -->
+  <div class="search-wrap">
+    <input type="text" id="invSearch" placeholder="חפש פריט, מיקום, הערה..." oninput="renderInventory()">
+  </div>
+  <div class="filter-row" id="invFilterRow"></div>
+
+  <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap">
+    <label style="display:flex;align-items:center;gap:6px;font-size:.82rem;font-weight:600;cursor:pointer;margin:0">
+      <input type="checkbox" id="invLowOnly" onchange="renderInventory()" style="width:16px;height:16px;-webkit-appearance:auto;appearance:auto;accent-color:#dc2626;padding:0;border:none">
+      הצג רק מלאי נמוך
+    </label>
+    <button class="btn btn-outline btn-sm" onclick="exportInventoryToSheets()" style="margin-right:auto">שלח ל-Sheets</button>
+  </div>
+
+  <div id="invList"></div>
+</div>
+
 <!-- ══════════ ORDERS ══════════ -->
 <div id="view-orders" class="view">
 
@@ -848,11 +939,15 @@
       <label>Google Apps Script URL</label>
       <input type="url" id="cfg-url" placeholder="https://script.google.com/macros/s/..." dir="ltr">
     </div>
+    <div class="fg">
+      <label>קישור לגיליון עצמו (Google Sheets)</label>
+      <input type="url" id="cfg-sheet-url" placeholder="https://docs.google.com/spreadsheets/d/..." dir="ltr">
+    </div>
     <div class="sync-row"><div class="sdot" id="connDot"></div><span id="connText">לא מוגדר</span></div>
     <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
       <button class="btn btn-outline btn-sm" onclick="testConn()">בדוק חיבור</button>
       <button class="btn btn-primary btn-sm" onclick="saveSettings()">שמור</button>
-      <a href="https://docs.google.com/spreadsheets/d/1Ihw_DjgY_JbBehPcIy3o1JyYjQRxlgeQ33OqVahtuBw/edit" target="_blank" class="btn btn-outline btn-sm" style="text-decoration:none">📊 פתח גיליון</a>
+      <a id="openSheetLink" href="https://docs.google.com/spreadsheets/d/1Ihw_DjgY_JbBehPcIy3o1JyYjQRxlgeQ33OqVahtuBw/edit" target="_blank" class="btn btn-outline btn-sm" style="text-decoration:none">📊 פתח גיליון</a>
     </div>
     <div id="connDetail" style="font-size:.78rem;color:var(--muted);margin-top:10px;line-height:1.6;display:none"></div>
     <div class="card" style="margin-top:12px;background:#fffbeb;border-color:#fcd34d">
@@ -906,6 +1001,16 @@
     <div style="display:flex;gap:8px">
       <input type="text" id="newProcCat" placeholder="קטגוריה חדשה (השקייה, זרעים...)">
       <button onclick="addProcCat()" style="flex-shrink:0;padding:9px 14px;background:var(--blue);color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:700">+ הוסף</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-label">📊 קטגוריות מלאי</div>
+    <p style="font-size:.82rem;color:var(--muted);margin-bottom:10px">קטגוריות שיופיעו בטופס המלאי</p>
+    <div id="invCatList" style="margin-bottom:10px"></div>
+    <div style="display:flex;gap:8px">
+      <input type="text" id="newInvCat" placeholder="קטגוריה חדשה...">
+      <button onclick="addInvCat()" style="flex-shrink:0;padding:9px 14px;background:var(--g3);color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:700">+ הוסף</button>
     </div>
   </div>
 
@@ -1124,7 +1229,9 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('t-reg-date').value = today();
   document.getElementById('p-date').value = today();
   if (settings.scriptUrl) document.getElementById('cfg-url').value = settings.scriptUrl;
+  if (settings.sheetUrl) document.getElementById('cfg-sheet-url').value = settings.sheetUrl;
   updateConnStatus();
+  updateSheetLink();
   renderFieldSelects();
   renderAutocomplete();
   renderList();
@@ -1137,6 +1244,9 @@ document.addEventListener('DOMContentLoaded', () => {
   renderProcList();
   renderSpeciesSelect();
   renderSpeciesList();
+  renderInvCatSelect();
+  renderInventory();
+  renderInvDatalists();
 });
 
 function today() { return new Date().toISOString().split('T')[0]; }
@@ -1150,10 +1260,11 @@ function switchTab(tab) {
   if (tab === 'list')        renderList();
   if (tab === 'tasks')       renderTasksList();
   if (tab === 'procurement') { renderProcCatSelect(); renderProcList(); renderProcSupplierList(); renderWishlist(); }
+  if (tab === 'inventory')   { renderInvCatSelect(); renderInventory(); renderInvDatalists(); }
   if (tab === 'orders')      { renderOrderFieldSelect(); renderCalcFieldSelect(); renderSpeciesSelect(); renderSpeciesList(); renderOrderSeasonFilter(); renderOrderTable(); }
   if (tab === 'rotation')    { renderRotationSeasons(); renderRotation(); }
   if (tab === 'finance')     { renderFinance(); }
-  if (tab === 'settings')    { renderFieldDefsList(); renderFieldsList(); renderProcCatList(); }
+  if (tab === 'settings')    { renderFieldDefsList(); renderFieldsList(); renderProcCatList(); renderInvCatList(); }
 }
 
 // ── Record type toggle ─────────────────────────
@@ -1706,22 +1817,34 @@ function renderFinance() {
 
   html += `</tbody></table></div>`;
 
-if (totalCost > 0) {
-    const vatChecked = document.getElementById('fin-vat-enabled')?.checked;
-    const vat = vatChecked ? totalCost * 0.18 : 0;
-    const totalWithVat = totalCost + vat;
+  const vatChecked = document.getElementById('fin-vat-enabled')?.checked || false;
+  const vat = vatChecked ? totalCost * 0.18 : 0;
+  const totalWithVat = totalCost + vat;
+
+  if (totalCost > 0) {
     html += `<div style="background:var(--g1);color:#fff;border-radius:10px;padding:14px 16px;margin-top:10px;font-weight:700;font-size:1rem">
       💸 סה"כ עלות: ₪${totalCost.toFixed(0)}`;
     if (vatChecked) html += `<br>מע"מ 18%: ₪${vat.toFixed(0)}<br>סה"כ עם מע"מ: ₪${totalWithVat.toFixed(0)}`;
     html += `</div>`;
     html += `<div style="margin-top:10px">
       <label>
-        <input type="checkbox" id="fin-vat-enabled" onchange="renderFinance()">
+        <input type="checkbox" id="fin-vat-enabled" ${vatChecked ? 'checked' : ''} onchange="renderFinance()">
         הוסף 18% מע"מ
       </label>
     </div>`;
   }
   el.innerHTML = html;
+
+  financeData[season] = {
+    season,
+    totalCost: Math.round(totalCost),
+    vatEnabled: vatChecked,
+    vatAmount: Math.round(vat),
+    totalWithVat: Math.round(totalWithVat),
+    updatedAt: new Date().toISOString()
+  };
+  localStorage.setItem('financeData', JSON.stringify(financeData));
+  syncToSheets();
 }
 function updateSpeciesPrice(name, val) {
   const sp = plantSpecies.find(s => s.name === name);
@@ -1732,7 +1855,10 @@ function updateSpeciesPrice(name, val) {
 }
 function updateSpeciesUnitPrice(name, val) {
   const sp = plantSpecies.find(s => s.name === name);
-  if (sp) sp.unitPrice = val ? parseFloat(val) : 0;
+  if (!sp) return;
+  sp.unitPrice = val ? parseFloat(val) : 0;
+  localStorage.setItem('plantSpecies', JSON.stringify(plantSpecies));
+  save();
 }
 function normSeason(s) {
   return (s||'').trim()
@@ -3582,7 +3708,7 @@ function fixOldRowsFormat() {
 }
 
 function exportAppData() {
-  var keys = ['plantDefs','plantSpecies','plantings','rotationPlan','rotationNotes','rotationDelivery','rotationClearance','fieldDefs','settings','cropGroups','fields','procCats'];
+  var keys = ['plantDefs','plantSpecies','plantings','rotationPlan','rotationNotes','rotationDelivery','rotationClearance','fieldDefs','settings','cropGroups','fields','procCats','inventory','procurements','wishlist','financeData'];
   var data = { _version: 1, _date: new Date().toISOString() };
   keys.forEach(function(k) {
     var v = localStorage.getItem(k);
@@ -3605,7 +3731,7 @@ function importAppData(input) {
       var data = JSON.parse(e.target.result);
       if (!data._version) { showToast('קובץ לא תקין','err'); return; }
       if (!confirm('⚠️ זה ידרוס את כל הנתונים הנוכחיים. להמשיך?')) return;
-      var keys = ['plantDefs','plantSpecies','plantings','rotationPlan','rotationNotes','rotationDelivery','rotationClearance','fieldDefs','settings','cropGroups','fields','procCats'];
+      var keys = ['plantDefs','plantSpecies','plantings','rotationPlan','rotationNotes','rotationDelivery','rotationClearance','fieldDefs','settings','cropGroups','fields','procCats','inventory','procurements','wishlist','financeData'];
       keys.forEach(function(k) {
         if (data[k] !== undefined) localStorage.setItem(k, JSON.stringify(data[k]));
       });
@@ -3836,6 +3962,366 @@ function deleteProc(id) {
 
 function saveProc() { localStorage.setItem('procurements', JSON.stringify(procurements)); }
 
+// ── מלאי (Inventory) ──────────────────────────────────────────────
+let inventory = JSON.parse(localStorage.getItem('inventory') || '[]');
+let invFilter = '';
+if (!settings.invCats) settings.invCats = ['ציוד וחלקי השקייה','זרעים ושתילים','דשנים וחומרי הדברה','כלי עבודה'];
+
+function saveInv() {
+  localStorage.setItem('inventory', JSON.stringify(inventory));
+  syncToSheets();
+}
+
+function isLowStock(it) {
+  return it.min > 0 && (+it.qty || 0) <= +it.min;
+}
+
+function renderInvCatSelect() {
+  const sel = document.getElementById('inv-cat');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— בחר קטגוריה —</option>' +
+    settings.invCats.map(c => `<option value="${escAttr(c)}"${c===cur?' selected':''}>${escHtml(c)}</option>`).join('');
+}
+
+function renderInvDatalists() {
+  const names = [...new Set(inventory.map(i=>i.name).concat(procurements.map(p=>p.item)).filter(Boolean))];
+  const locs  = [...new Set(inventory.map(i=>i.loc).filter(Boolean))];
+  const nEl = document.getElementById('inv-name-list');
+  const lEl = document.getElementById('inv-loc-list');
+  if (nEl) nEl.innerHTML = names.map(n=>`<option value="${escAttr(n)}">`).join('');
+  if (lEl) lEl.innerHTML = locs.map(l=>`<option value="${escAttr(l)}">`).join('');
+}
+
+function saveInvItem() {
+  const name = document.getElementById('inv-name').value.trim();
+  if (!name) { showToast('נא להזין שם פריט','err'); return; }
+  const cat = document.getElementById('inv-cat').value;
+  if (!cat) { showToast('נא לבחור קטגוריה','err'); return; }
+  const editId = document.getElementById('inv-edit-id').value;
+  const qty = parseFloat(document.getElementById('inv-qty').value) || 0;
+
+  const item = {
+    id:    editId ? parseInt(editId) : Date.now(),
+    name, cat,
+    qty,
+    unit:  document.getElementById('inv-unit').value.trim(),
+    min:   parseFloat(document.getElementById('inv-min').value)   || 0,
+    loc:   document.getElementById('inv-loc').value.trim(),
+    price: parseFloat(document.getElementById('inv-price').value) || 0,
+    notes: document.getElementById('inv-notes').value.trim(),
+    updatedAt: new Date().toISOString()
+  };
+
+  if (editId) {
+    const i = inventory.findIndex(x => x.id === item.id);
+    if (i >= 0) {
+      item.log = inventory[i].log || [];
+      if (inventory[i].qty !== qty) {
+        item.log.push({ date: today(), from: inventory[i].qty, to: qty, type: 'עדכון ידני' });
+      }
+      inventory[i] = item;
+    }
+  } else {
+    item.log = [{ date: today(), from: 0, to: qty, type: 'פתיחת מלאי' }];
+    inventory.unshift(item);
+  }
+
+  saveInv();
+  clearInvForm();
+  renderInventory();
+  renderInvDatalists();
+  showToast('✓ נשמר במלאי');
+}
+
+function clearInvForm() {
+  ['inv-name','inv-qty','inv-unit','inv-min','inv-loc','inv-price','inv-notes']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  document.getElementById('inv-cat').value = '';
+  document.getElementById('inv-edit-id').value = '';
+  document.getElementById('inv-save-btn').textContent = 'שמור פריט';
+}
+
+function editInvItem(id) {
+  const it = inventory.find(x => x.id === id);
+  if (!it) return;
+  renderInvCatSelect();
+  document.getElementById('inv-cat').value   = it.cat || '';
+  document.getElementById('inv-name').value  = it.name || '';
+  document.getElementById('inv-qty').value   = it.qty || '';
+  document.getElementById('inv-unit').value  = it.unit || '';
+  document.getElementById('inv-min').value   = it.min || '';
+  document.getElementById('inv-loc').value   = it.loc || '';
+  document.getElementById('inv-price').value = it.price || '';
+  document.getElementById('inv-notes').value = it.notes || '';
+  document.getElementById('inv-edit-id').value = it.id;
+  document.getElementById('inv-save-btn').textContent = 'עדכן פריט';
+  window.scrollTo(0,0);
+}
+
+function deleteInvItem(id) {
+  const it = inventory.find(x => x.id === id);
+  if (!it) return;
+  if (!confirm('למחוק את "' + it.name + '" מהמלאי?')) return;
+  inventory = inventory.filter(x => x.id !== id);
+  saveInv();
+  renderInventory();
+  showToast('נמחק');
+}
+
+// שינוי כמות מהיר (+/-)
+function adjustInvQty(id, delta) {
+  const it = inventory.find(x => x.id === id);
+  if (!it) return;
+  const before = +it.qty || 0;
+  const after = Math.max(0, Math.round((before + delta) * 100) / 100);
+  if (before === after) return;
+  it.qty = after;
+  it.updatedAt = new Date().toISOString();
+  if (!it.log) it.log = [];
+  it.log.push({ date: today(), from: before, to: after, type: delta > 0 ? 'קליטה' : 'הוצאה' });
+  saveInv();
+  renderInventory();
+}
+
+// הזנת כמות מדויקת (ספירת מלאי)
+function setInvQty(id, val) {
+  const it = inventory.find(x => x.id === id);
+  if (!it) return;
+  const before = +it.qty || 0;
+  const after = Math.max(0, parseFloat(val) || 0);
+  if (before === after) return;
+  it.qty = after;
+  it.updatedAt = new Date().toISOString();
+  if (!it.log) it.log = [];
+  it.log.push({ date: today(), from: before, to: after, type: 'ספירת מלאי' });
+  saveInv();
+  renderInventory();
+  showToast('✓ ' + it.name + ': ' + after + (it.unit ? ' ' + it.unit : ''));
+}
+
+function toggleInvLog(id) {
+  const el = document.getElementById('inv-log-' + id);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+// ייבוא מרשומות הרכש
+function buildInvFromProcurement() {
+  if (!procurements.length) { showToast('אין רשומות רכש','err'); return; }
+  const agg = {};
+  procurements.forEach(p => {
+    if (!p.item) return;
+    const key = p.item.trim();
+    if (!agg[key]) agg[key] = { name: key, cat: p.cat || '', qty: 0, unit: p.unit || '', price: 0, n: 0 };
+    agg[key].qty += parseFloat(p.qty) || 0;
+    if (p.price) { agg[key].price += parseFloat(p.price) || 0; agg[key].n++; }
+    if (!agg[key].unit && p.unit) agg[key].unit = p.unit;
+  });
+
+  let added = 0, skipped = 0;
+  Object.values(agg).forEach(a => {
+    if (inventory.some(i => i.name.trim() === a.name)) { skipped++; return; }
+    inventory.push({
+      id: Date.now() + Math.floor(Math.random()*10000),
+      name: a.name,
+      cat: settings.invCats.includes(a.cat) ? a.cat : (settings.invCats[0] || ''),
+      qty: Math.round(a.qty * 100) / 100,
+      unit: a.unit,
+      min: 0,
+      loc: '',
+      price: a.n ? Math.round(a.price / a.n * 100) / 100 : 0,
+      notes: 'יובא מרשומות רכש',
+      updatedAt: new Date().toISOString(),
+      log: [{ date: today(), from: 0, to: Math.round(a.qty*100)/100, type: 'ייבוא מרכש' }]
+    });
+    added++;
+  });
+
+  saveInv();
+  renderInventory();
+  renderInvDatalists();
+  const info = document.getElementById('inv-import-info');
+  if (info) info.textContent = `✓ נוספו ${added} פריטים · ${skipped} כבר היו קיימים (לא שונו)`;
+  showToast(added ? `✓ יובאו ${added} פריטים` : 'כל הפריטים כבר קיימים');
+}
+
+function setInvFilter(val, el) {
+  invFilter = val;
+  document.querySelectorAll('#invFilterRow .chip').forEach(c => c.classList.remove('active'));
+  if (el) el.classList.add('active');
+  renderInventory();
+}
+
+function renderInvAlerts() {
+  const el = document.getElementById('invAlerts');
+  const badge = document.getElementById('invNavBadge');
+  if (!el) return;
+  const low = inventory.filter(isLowStock);
+  if (badge) {
+    if (low.length) { badge.style.display = 'inline-block'; badge.textContent = low.length; }
+    else badge.style.display = 'none';
+  }
+  if (!low.length) { el.innerHTML = ''; return; }
+  el.innerHTML = `
+    <div class="card" style="background:#fef2f2;border:1.5px solid #fca5a5;margin-bottom:12px">
+      <div class="section-label" style="color:#991b1b;border-color:#fecaca">⚠️ מלאי נמוך — ${low.length} פריטים</div>
+      <div class="badges" style="gap:6px">
+        ${low.map(it => `<span class="badge" style="background:#fee2e2;color:#991b1b;font-size:.8rem;padding:4px 11px;cursor:pointer"
+          onclick="editInvItem(${it.id})">${escHtml(it.name)}: <strong>${it.qty}${it.unit?' '+escHtml(it.unit):''}</strong> (סף ${it.min})</span>`).join('')}
+      </div>
+    </div>`;
+}
+
+function renderInventory() {
+  renderInvCatSelect();
+  renderInvAlerts();
+
+  const search = (document.getElementById('invSearch')?.value || '').toLowerCase();
+  const lowOnly = document.getElementById('invLowOnly')?.checked;
+
+  // סטטיסטיקה
+  const lowCount = inventory.filter(isLowStock).length;
+  const totalValue = inventory.reduce((s,i) => s + ((+i.qty||0) * (+i.price||0)), 0);
+  const stT = document.getElementById('inv-st-total');
+  const stL = document.getElementById('inv-st-low');
+  const stV = document.getElementById('inv-st-value');
+  if (stT) stT.textContent = inventory.length;
+  if (stL) stL.textContent = lowCount;
+  if (stV) stV.textContent = '₪' + Math.round(totalValue);
+
+  // צ'יפים לסינון
+  const cats = [...new Set(inventory.map(i=>i.cat).filter(Boolean))];
+  const fr = document.getElementById('invFilterRow');
+  if (fr) {
+    fr.innerHTML = `<button class="chip ${invFilter===''?'active':''}" onclick="setInvFilter('',this)">הכל</button>` +
+      cats.map(c => `<button class="chip ${invFilter===c?'active':''}" onclick="setInvFilter(${JSON.stringify(c)},this)">${escHtml(c)}</button>`).join('');
+  }
+
+  let list = [...inventory];
+  if (invFilter) list = list.filter(i => i.cat === invFilter);
+  if (lowOnly)  list = list.filter(isLowStock);
+  if (search)   list = list.filter(i =>
+    ((i.name||'') + (i.loc||'') + (i.notes||'') + (i.cat||'')).toLowerCase().includes(search));
+
+  const el = document.getElementById('invList');
+  if (!el) return;
+  if (!list.length) {
+    el.innerHTML = '<div class="empty"><div class="icon">📊</div><p>אין פריטי מלאי להצגה</p></div>';
+    return;
+  }
+
+  // קיבוץ לפי קטגוריה
+  const byCat = {};
+  list.forEach(i => {
+    const k = i.cat || '(ללא קטגוריה)';
+    if (!byCat[k]) byCat[k] = [];
+    byCat[k].push(i);
+  });
+
+  el.innerHTML = Object.entries(byCat).map(([cat, items]) =>
+    `<div class="season-group-title">📁 ${escHtml(cat)}</div>` +
+    items.sort((a,b)=>a.name.localeCompare(b.name,'he')).map(invCard).join('')
+  ).join('');
+}
+
+function invCard(it) {
+  const low = isLowStock(it);
+  const qty = +it.qty || 0;
+  const pct = it.min > 0 ? Math.min(100, Math.round(qty / (it.min * 2) * 100)) : 100;
+  const barColor = low ? '#dc2626' : pct < 60 ? '#f59e0b' : '#16a34a';
+  const logHtml = (it.log || []).slice(-8).reverse().map(l =>
+    `<div class="log-entry" style="display:flex;justify-content:space-between;gap:8px">
+      <span class="log-date">${formatDate(l.date)}</span>
+      <span class="log-text">${escHtml(l.type)}: ${l.from} → <strong>${l.to}</strong></span>
+    </div>`).join('') || '<p style="font-size:.78rem;color:var(--muted)">אין תנועות</p>';
+
+  return `
+  <div class="rec" style="border-right-color:${low?'#dc2626':'var(--g3)'};${low?'background:#fef2f2':''}">
+    <div class="rec-head">
+      <div class="rec-title">${escHtml(it.name)}</div>
+      <div class="rec-season" style="${low?'background:#fee2e2;color:#991b1b':''}">
+        ${qty}${it.unit?' '+escHtml(it.unit):''}
+      </div>
+    </div>
+
+    <div style="height:6px;background:#e5e7eb;border-radius:3px;margin-top:8px;overflow:hidden">
+      <div style="width:${pct}%;height:100%;background:${barColor}"></div>
+    </div>
+
+    <div class="badges">
+      ${low ? '<span class="badge" style="background:#fee2e2;color:#991b1b">⚠️ מלאי נמוך</span>' : ''}
+      ${it.min ? `<span class="badge b-gray">סף: ${it.min}</span>` : ''}
+      ${it.loc ? `<span class="badge b-blue">📍 ${escHtml(it.loc)}</span>` : ''}
+      ${it.price ? `<span class="badge b-amber">₪${it.price}/יח׳</span>` : ''}
+      ${it.price ? `<span class="badge b-green">שווי: ₪${Math.round(qty*it.price)}</span>` : ''}
+    </div>
+
+    ${it.notes ? `<div class="rec-note">${escHtml(it.notes)}</div>` : ''}
+
+    <div style="display:flex;gap:5px;align-items:center;margin-top:10px;flex-wrap:wrap">
+      <button onclick="adjustInvQty(${it.id},-1)" style="width:34px;height:34px;border-radius:8px;border:1.5px solid #fca5a5;background:#fff;color:#dc2626;font-size:1.1rem;font-weight:700;cursor:pointer">−</button>
+      <input type="number" value="${qty}" min="0" step="0.01"
+        onchange="setInvQty(${it.id},this.value)" onclick="this.select()"
+        style="width:80px;text-align:center;font-weight:700;padding:6px">
+      <button onclick="adjustInvQty(${it.id},1)" style="width:34px;height:34px;border-radius:8px;border:1.5px solid #86efac;background:#fff;color:#16a34a;font-size:1.1rem;font-weight:700;cursor:pointer">+</button>
+      <button class="btn-ghost" onclick="toggleInvLog(${it.id})" style="margin-right:auto">📜 תנועות</button>
+      <button class="btn-ghost" onclick="editInvItem(${it.id})">✏️</button>
+      <button class="btn-ghost del" onclick="deleteInvItem(${it.id})">🗑</button>
+    </div>
+
+    <div id="inv-log-${it.id}" style="display:none" class="log-section">${logHtml}</div>
+  </div>`;
+}
+
+async function exportInventoryToSheets() {
+  if (!settings.scriptUrl) { showToast('הגדר Sheets URL תחילה','err'); return; }
+  if (!inventory.length) { showToast('אין פריטי מלאי','err'); return; }
+  const rows = inventory.map(i => ({
+    name: i.name, cat: i.cat || '', qty: +i.qty || 0, unit: i.unit || '',
+    min: i.min || 0, loc: i.loc || '', price: i.price || 0,
+    value: Math.round((+i.qty||0) * (+i.price||0)),
+    low: isLowStock(i) ? 'כן' : '', notes: i.notes || '',
+    updatedAt: i.updatedAt || ''
+  }));
+  showToast('שולח מלאי...');
+  const ok = await sendToSheets({ _type: 'inventory', rows });
+  showToast(ok ? '✓ מלאי נשלח ל-Sheets' : 'שגיאה בשליחה', ok ? '' : 'err');
+}
+
+function renderInvCatList() {
+  const el = document.getElementById('invCatList');
+  if (!el) return;
+  if (!settings.invCats.length) { el.innerHTML = '<p style="font-size:.82rem;color:var(--muted)">אין קטגוריות</p>'; return; }
+  el.innerHTML = settings.invCats.map((c,i) => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:.9rem">${escHtml(c)}</span>
+      <button class="btn-ghost del" onclick="removeInvCat(${i})">✕</button>
+    </div>`).join('');
+}
+
+function addInvCat() {
+  const input = document.getElementById('newInvCat');
+  const name = input.value.trim();
+  if (!name) return;
+  if (settings.invCats.includes(name)) { showToast('קטגוריה קיימת','err'); return; }
+  settings.invCats.push(name);
+  saveSettings(false);
+  input.value = '';
+  renderInvCatSelect();
+  renderInvCatList();
+  showToast('קטגוריה נוספה');
+}
+
+function removeInvCat(i) {
+  const name = settings.invCats[i];
+  const inUse = inventory.filter(x => x.cat === name).length;
+  if (inUse && !confirm(`יש ${inUse} פריטי מלאי בקטגוריה "${name}".\nהפריטים לא יימחקו, אבל יאבדו את הקטגוריה. להמשיך?`)) return;
+  settings.invCats.splice(i,1);
+  saveSettings(false);
+  renderInvCatSelect();
+  renderInvCatList();
+}
+
 // ── רשימת בירורים (Wishlist) ──────────────────────────────────────
 let wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
 let pendingWlImg = null;
@@ -4040,7 +4526,7 @@ async function syncAll() {
 
 // ── Settings ──────────────────────────────────
 function exportAllData() {
-  const keys = ['plantSpecies','plantDefs','plantings','rotationPlan','rotationNotes','rotationDelivery','rotationClearance','orderOverrides','settings','tasks'];
+  const keys = ['plantSpecies','plantDefs','plantings','rotationPlan','rotationNotes','rotationDelivery','rotationClearance','orderOverrides','settings','tasks','inventory','procurements','wishlist','financeData'];
   const data = { _version: 1, _exported: new Date().toISOString(), _farm: settings.farmName || 'שלושה ברושים ירוקים-ראשי' };
   keys.forEach(k => { try { data[k] = JSON.parse(localStorage.getItem(k) || 'null'); } catch(e){} });
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
@@ -4188,7 +4674,7 @@ function importAllData(input) {
       const data = JSON.parse(e.target.result);
       if (!data._version) { showToast('קובץ לא תקין','err'); return; }
       if (!confirm('ייבוא יחליף את כל הנתונים הקיימים. להמשיך?')) return;
-      const keys = ['plantSpecies','plantDefs','plantings','rotationPlan','rotationNotes','rotationDelivery','rotationClearance','orderOverrides','settings','tasks'];
+      const keys = ['plantSpecies','plantDefs','plantings','rotationPlan','rotationNotes','rotationDelivery','rotationClearance','orderOverrides','settings','tasks','inventory','procurements','wishlist','financeData'];
       keys.forEach(k => { if (data[k] !== undefined && data[k] !== null) localStorage.setItem(k, JSON.stringify(data[k])); });
       document.getElementById('backup-info').textContent = '✓ יובא מ: ' + (data._farm||'') + ' · ' + (data._exported ? new Date(data._exported).toLocaleString('he-IL') : '');
       showToast('✓ נתונים יובאו — טוען מחדש...');
@@ -4202,9 +4688,17 @@ function importAllData(input) {
 function saveSettings(toast=true) {
   const urlEl = document.getElementById('cfg-url');
   if (urlEl) settings.scriptUrl = urlEl.value.trim();
+  const sheetEl = document.getElementById('cfg-sheet-url');
+  if (sheetEl) settings.sheetUrl = sheetEl.value.trim();
   localStorage.setItem('settings', JSON.stringify(settings));
   updateConnStatus();
+  updateSheetLink();
   if (toast) showToast('נשמר');
+}
+
+function updateSheetLink() {
+  const link = document.getElementById('openSheetLink');
+  if (link && settings.sheetUrl) link.href = settings.sheetUrl;
 }
 
 async function testConn() {
@@ -4270,7 +4764,7 @@ function syncToSheets() {
     method: 'POST',
     body: JSON.stringify({
       action: 'syncData',
-      data: { plantings, tasks, plantSpecies, plantDefs, settings, procurements: procurements, financeData }
+      data: { plantings, tasks, plantSpecies, plantDefs, settings, procurements: procurements, financeData, inventory }
     })
   }).catch(e => console.log('Sync error:', e));
 }
