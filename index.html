@@ -413,6 +413,78 @@
 <!-- ══════════ PROCUREMENT ══════════ -->
 <div id="view-procurement" class="view">
 
+  <!-- ── ספקים ── -->
+  <div class="card" style="border:1.5px solid #a5b4fc;background:#eef2ff">
+    <div class="section-label" style="color:#3730a3;cursor:pointer" onclick="toggleSupplierPanel()">
+      🏭 ספקים <span id="sup-toggle" style="float:left;font-size:.8rem">▼ פתח</span>
+    </div>
+    <div id="sup-body" style="display:none">
+      <div class="fg g2">
+        <div>
+          <label>שם ספק / חברה</label>
+          <input type="text" id="sup-name" placeholder="שם העסק...">
+        </div>
+        <div>
+          <label>איש קשר</label>
+          <input type="text" id="sup-contact" placeholder="שם נציג...">
+        </div>
+      </div>
+      <div class="fg g2">
+        <div>
+          <label>טלפון</label>
+          <input type="tel" id="sup-phone" placeholder="050-0000000" dir="ltr">
+        </div>
+        <div>
+          <label>טלפון נוסף</label>
+          <input type="tel" id="sup-phone2" placeholder="משרד / נייד נוסף" dir="ltr">
+        </div>
+      </div>
+      <div class="fg g2">
+        <div>
+          <label>אימייל</label>
+          <input type="email" id="sup-email" placeholder="mail@example.com" dir="ltr">
+        </div>
+        <div>
+          <label>אתר אינטרנט</label>
+          <input type="url" id="sup-web" placeholder="https://..." dir="ltr">
+        </div>
+      </div>
+      <div class="fg">
+        <label>כתובת</label>
+        <input type="text" id="sup-address" placeholder="רחוב, עיר...">
+      </div>
+      <div class="fg">
+        <label>מה מספק</label>
+        <input type="text" id="sup-supplies" placeholder="השקייה, זרעים, ניילונים...">
+      </div>
+      <div class="fg g2">
+        <div>
+          <label>תנאי תשלום</label>
+          <input type="text" id="sup-terms" placeholder="שוטף+30, מזומן...">
+        </div>
+        <div>
+          <label>מס' לקוח אצל הספק</label>
+          <input type="text" id="sup-account" placeholder="רשות">
+        </div>
+      </div>
+      <div class="fg">
+        <label>הערות</label>
+        <textarea id="sup-notes" placeholder="שעות פעילות, הנחות, ניסיון קודם..." style="min-height:45px"></textarea>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" id="sup-save-btn" onclick="saveSupplier()" style="flex:1;background:#4f46e5;border-color:#4f46e5">שמור ספק</button>
+        <button class="btn btn-outline" onclick="clearSupplierForm()" style="width:auto;padding:12px 14px">ביטול</button>
+      </div>
+      <input type="hidden" id="sup-edit-id">
+
+      <div class="search-wrap" style="margin-top:12px">
+        <input type="text" id="supSearch" placeholder="חפש ספק..." oninput="renderSuppliersList()">
+      </div>
+      <div id="suppliersList"></div>
+      <button class="btn btn-outline btn-sm" onclick="exportSuppliersToSheets()" style="margin-top:8px;border-color:#4f46e5;color:#4f46e5">שלח ספקים ל-Sheets</button>
+    </div>
+  </div>
+
   <!-- ── לבירור ורכש עתידי ── -->
   <div class="card" style="border:1.5px solid #fcd34d;background:#fffbeb">
     <div class="section-label" style="color:#92400e">🔍 לבירור ורכש עתידי</div>
@@ -500,8 +572,9 @@
     </div>
     <div class="fg">
       <label>ספק / מקור</label>
-      <input type="text" id="p-supplier" placeholder="שם חנות / ספק" list="p-supplier-list">
+      <input type="text" id="p-supplier" placeholder="שם חנות / ספק" list="p-supplier-list" oninput="showSupplierInfo()">
       <datalist id="p-supplier-list"></datalist>
+      <div id="p-supplier-info" style="display:none;margin-top:6px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px;padding:8px 10px;font-size:.8rem;line-height:1.7"></div>
     </div>
     <div class="fg">
       <label>הערות</label>
@@ -1284,7 +1357,7 @@ function switchTab(tab, el) {
   try { localStorage.setItem('activeTab', tab); } catch(e) {}
   if (tab === 'list')        renderList();
   if (tab === 'tasks')       renderTasksList();
-  if (tab === 'procurement') { renderProcCatSelect(); renderProcList(); renderProcSupplierList(); renderWishlist(); }
+  if (tab === 'procurement') { renderProcCatSelect(); renderProcList(); renderProcSupplierList(); renderWishlist(); renderSuppliersList(); }
   if (tab === 'inventory')   { renderInvCatSelect(); renderInventory(); renderInvDatalists(); }
   if (tab === 'orders')      { renderOrderFieldSelect(); renderCalcFieldSelect(); renderSpeciesSelect(); renderSpeciesList(); renderOrderSeasonFilter(); renderOrderTable(); }
   if (tab === 'rotation')    { renderRotationSeasons(); renderRotation(); }
@@ -3733,7 +3806,7 @@ function fixOldRowsFormat() {
 }
 
 function exportAppData() {
-  var keys = ['plantDefs','plantSpecies','plantings','rotationPlan','rotationNotes','rotationDelivery','rotationClearance','fieldDefs','settings','cropGroups','fields','procCats','inventory','procurements','wishlist','financeData'];
+  var keys = ['plantDefs','plantSpecies','plantings','rotationPlan','rotationNotes','rotationDelivery','rotationClearance','fieldDefs','settings','cropGroups','fields','procCats','inventory','procurements','wishlist','financeData','suppliers'];
   var data = { _version: 1, _date: new Date().toISOString() };
   keys.forEach(function(k) {
     var v = localStorage.getItem(k);
@@ -3756,7 +3829,7 @@ function importAppData(input) {
       var data = JSON.parse(e.target.result);
       if (!data._version) { showToast('קובץ לא תקין','err'); return; }
       if (!confirm('⚠️ זה ידרוס את כל הנתונים הנוכחיים. להמשיך?')) return;
-      var keys = ['plantDefs','plantSpecies','plantings','rotationPlan','rotationNotes','rotationDelivery','rotationClearance','fieldDefs','settings','cropGroups','fields','procCats','inventory','procurements','wishlist','financeData'];
+      var keys = ['plantDefs','plantSpecies','plantings','rotationPlan','rotationNotes','rotationDelivery','rotationClearance','fieldDefs','settings','cropGroups','fields','procCats','inventory','procurements','wishlist','financeData','suppliers'];
       keys.forEach(function(k) {
         if (data[k] !== undefined) localStorage.setItem(k, JSON.stringify(data[k]));
       });
@@ -3972,6 +4045,10 @@ function renderProcList() {
         ${p.supplier?` · ${escHtml(p.supplier)}`:''}
       </div>
       ${p.notes?`<div class="rec-note">${escHtml(p.notes)}</div>`:''}
+      ${(function(){
+        const s = findSupplierByName(p.supplier);
+        return s ? `<div style="font-size:.76rem;color:#4338ca;margin-top:5px;background:#eef2ff;border-radius:7px;padding:5px 8px;line-height:1.7">${supplierContactHtml(s)}</div>` : '';
+      })()}
       ${p.img?`<img src="${p.img}" class="proc-img" onclick="openLightbox('${p.img}')" alt="תמונת פריט">`:''}
       <div class="rec-actions">
         <button class="btn-ghost del" onclick="deleteProc(${p.id})">🗑 מחק</button>
@@ -3986,6 +4063,214 @@ function deleteProc(id) {
 }
 
 function saveProc() { localStorage.setItem('procurements', JSON.stringify(procurements)); }
+
+function _safeScroll(id) {
+  const el = document.getElementById(id);
+  if (el && typeof el.scrollIntoView === 'function') el.scrollIntoView({block:'center'});
+}
+
+// ── ספקים (Suppliers) ─────────────────────────────────────────────
+let suppliers = JSON.parse(localStorage.getItem('suppliers') || '[]');
+
+function saveSuppliers() {
+  localStorage.setItem('suppliers', JSON.stringify(suppliers));
+  syncToSheets();
+}
+
+function toggleSupplierPanel() {
+  const body = document.getElementById('sup-body');
+  const tog  = document.getElementById('sup-toggle');
+  const open = body.style.display === 'block';
+  body.style.display = open ? 'none' : 'block';
+  tog.textContent = open ? '▼ פתח' : '▲ סגור';
+  if (!open) renderSuppliersList();
+}
+
+function saveSupplier() {
+  const name = document.getElementById('sup-name').value.trim();
+  if (!name) { showToast('נא להזין שם ספק','err'); return; }
+  const editId = document.getElementById('sup-edit-id').value;
+
+  // מניעת כפילות
+  const dup = suppliers.find(s => s.name.trim() === name && String(s.id) !== String(editId));
+  if (dup) { showToast('ספק בשם זה כבר קיים','err'); return; }
+
+  const sup = {
+    id:       editId ? parseInt(editId) : Date.now(),
+    name,
+    contact:  document.getElementById('sup-contact').value.trim(),
+    phone:    document.getElementById('sup-phone').value.trim(),
+    phone2:   document.getElementById('sup-phone2').value.trim(),
+    email:    document.getElementById('sup-email').value.trim(),
+    web:      document.getElementById('sup-web').value.trim(),
+    address:  document.getElementById('sup-address').value.trim(),
+    supplies: document.getElementById('sup-supplies').value.trim(),
+    terms:    document.getElementById('sup-terms').value.trim(),
+    account:  document.getElementById('sup-account').value.trim(),
+    notes:    document.getElementById('sup-notes').value.trim(),
+    updatedAt: new Date().toISOString()
+  };
+
+  if (editId) {
+    const i = suppliers.findIndex(s => s.id === sup.id);
+    if (i >= 0) suppliers[i] = sup;
+  } else {
+    suppliers.unshift(sup);
+  }
+
+  saveSuppliers();
+  clearSupplierForm();
+  renderSuppliersList();
+  renderProcSupplierList();
+  showToast('✓ ספק נשמר');
+}
+
+function clearSupplierForm() {
+  ['sup-name','sup-contact','sup-phone','sup-phone2','sup-email','sup-web',
+   'sup-address','sup-supplies','sup-terms','sup-account','sup-notes']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  document.getElementById('sup-edit-id').value = '';
+  document.getElementById('sup-save-btn').textContent = 'שמור ספק';
+}
+
+function editSupplier(id) {
+  const s = suppliers.find(x => x.id === id);
+  if (!s) return;
+  document.getElementById('sup-name').value     = s.name || '';
+  document.getElementById('sup-contact').value  = s.contact || '';
+  document.getElementById('sup-phone').value    = s.phone || '';
+  document.getElementById('sup-phone2').value   = s.phone2 || '';
+  document.getElementById('sup-email').value    = s.email || '';
+  document.getElementById('sup-web').value      = s.web || '';
+  document.getElementById('sup-address').value  = s.address || '';
+  document.getElementById('sup-supplies').value = s.supplies || '';
+  document.getElementById('sup-terms').value    = s.terms || '';
+  document.getElementById('sup-account').value  = s.account || '';
+  document.getElementById('sup-notes').value    = s.notes || '';
+  document.getElementById('sup-edit-id').value  = s.id;
+  document.getElementById('sup-save-btn').textContent = 'עדכן ספק';
+  const body = document.getElementById('sup-body');
+  if (body && body.style.display !== 'block') toggleSupplierPanel();
+  _safeScroll('sup-name');
+}
+
+function deleteSupplier(id) {
+  const s = suppliers.find(x => x.id === id);
+  if (!s) return;
+  const used = procurements.filter(p => (p.supplier||'').trim() === s.name.trim()).length;
+  const msg = used
+    ? `לספק "${s.name}" יש ${used} רשומות רכש.\nהרשומות לא יימחקו — רק פרטי הקשר. להמשיך?`
+    : `למחוק את הספק "${s.name}"?`;
+  if (!confirm(msg)) return;
+  suppliers = suppliers.filter(x => x.id !== id);
+  saveSuppliers();
+  renderSuppliersList();
+  renderProcSupplierList();
+  showToast('נמחק');
+}
+
+// יצירת ספק מהיר משם שכבר הוקלד בטופס הרכש
+function quickAddSupplier(name) {
+  clearSupplierForm();
+  document.getElementById('sup-name').value = name;
+  const body = document.getElementById('sup-body');
+  if (body && body.style.display !== 'block') toggleSupplierPanel();
+  document.getElementById('sup-contact').focus();
+  _safeScroll('sup-name');
+}
+
+function findSupplierByName(name) {
+  if (!name) return null;
+  const n = name.trim();
+  return suppliers.find(s => s.name.trim() === n) || null;
+}
+
+// הצגת פרטי ספק מתחת לשדה בטופס הרכש
+function showSupplierInfo() {
+  const el = document.getElementById('p-supplier-info');
+  if (!el) return;
+  const name = (document.getElementById('p-supplier')?.value || '').trim();
+  if (!name) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  const s = findSupplierByName(name);
+  if (!s) {
+    el.style.display = 'block';
+    el.innerHTML = `<span style="color:#6b7280">ספק זה לא נמצא ברשימת הספקים. </span>
+      <button onclick="quickAddSupplier(${JSON.stringify(name).replace(/"/g,'&quot;')})"
+        style="padding:3px 10px;border:1px solid #818cf8;border-radius:8px;background:#fff;color:#4338ca;cursor:pointer;font-family:inherit;font-size:.76rem;font-weight:600">
+        + הוסף פרטי ספק</button>`;
+    return;
+  }
+  el.style.display = 'block';
+  el.innerHTML = supplierContactHtml(s) +
+    `<div style="margin-top:5px"><button onclick="editSupplier(${s.id})"
+      style="padding:2px 9px;border:1px solid #818cf8;border-radius:8px;background:#fff;color:#4338ca;cursor:pointer;font-family:inherit;font-size:.74rem">✏️ ערוך פרטים</button></div>`;
+}
+
+function supplierContactHtml(s) {
+  const bits = [];
+  if (s.contact)  bits.push(`👤 ${escHtml(s.contact)}`);
+  if (s.phone)    bits.push(`📞 <a href="tel:${escAttr(s.phone)}" style="color:#1d4ed8">${escHtml(s.phone)}</a>`);
+  if (s.phone2)   bits.push(`📱 <a href="tel:${escAttr(s.phone2)}" style="color:#1d4ed8">${escHtml(s.phone2)}</a>`);
+  if (s.email)    bits.push(`✉️ <a href="mailto:${escAttr(s.email)}" style="color:#1d4ed8">${escHtml(s.email)}</a>`);
+  if (s.web)      bits.push(`🌐 <a href="${escAttr(s.web)}" target="_blank" rel="noopener" style="color:#1d4ed8">אתר</a>`);
+  if (s.address)  bits.push(`📍 ${escHtml(s.address)}`);
+  if (s.terms)    bits.push(`💳 ${escHtml(s.terms)}`);
+  if (s.account)  bits.push(`🔢 ${escHtml(s.account)}`);
+  return bits.join(' · ') || '<span style="color:#9ca3af">אין פרטי קשר</span>';
+}
+
+function renderSuppliersList() {
+  const el = document.getElementById('suppliersList');
+  if (!el) return;
+  const q = (document.getElementById('supSearch')?.value || '').toLowerCase();
+  let list = [...suppliers];
+  if (q) list = list.filter(s =>
+    ((s.name||'')+(s.contact||'')+(s.supplies||'')+(s.notes||'')+(s.phone||'')+(s.address||''))
+      .toLowerCase().includes(q));
+
+  if (!list.length) {
+    el.innerHTML = '<p style="font-size:.82rem;color:var(--muted);text-align:center;padding:10px">'
+      + (suppliers.length ? 'לא נמצאו ספקים בחיפוש זה' : 'אין ספקים מוגדרים עדיין') + '</p>';
+    return;
+  }
+
+  el.innerHTML = list.sort((a,b)=>a.name.localeCompare(b.name,'he')).map(s => {
+    const count = procurements.filter(p => (p.supplier||'').trim() === s.name.trim()).length;
+    const spent = procurements.filter(p => (p.supplier||'').trim() === s.name.trim())
+      .reduce((sum,p) => sum + ((parseFloat(p.price)||0) * (parseFloat(p.qty)||1)), 0);
+    return `
+    <div class="card" style="margin-bottom:8px;padding:11px;border-right:4px solid #4f46e5">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap">
+        <div style="font-weight:700;font-size:.93rem;color:#3730a3">${escHtml(s.name)}</div>
+        <div style="display:flex;gap:4px;flex-shrink:0">
+          <button class="btn-ghost" onclick="editSupplier(${s.id})">✏️</button>
+          <button class="btn-ghost del" onclick="deleteSupplier(${s.id})">🗑</button>
+        </div>
+      </div>
+      ${s.supplies ? `<div style="font-size:.78rem;color:#4338ca;margin-top:2px">🏷️ ${escHtml(s.supplies)}</div>` : ''}
+      <div style="font-size:.8rem;color:#374151;margin-top:5px;line-height:1.8">${supplierContactHtml(s)}</div>
+      ${s.notes ? `<div class="rec-note">${escHtml(s.notes)}</div>` : ''}
+      <div class="badges" style="margin-top:6px">
+        <span class="badge b-gray">${count} רכישות</span>
+        ${spent ? `<span class="badge b-green">₪${Math.round(spent)}</span>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function exportSuppliersToSheets() {
+  if (!settings.scriptUrl) { showToast('הגדר Sheets URL תחילה','err'); return; }
+  if (!suppliers.length) { showToast('אין ספקים לשליחה','err'); return; }
+  const rows = suppliers.map(s => ({
+    name: s.name, contact: s.contact||'', phone: s.phone||'', phone2: s.phone2||'',
+    email: s.email||'', web: s.web||'', address: s.address||'',
+    supplies: s.supplies||'', terms: s.terms||'', account: s.account||'', notes: s.notes||'',
+    purchases: procurements.filter(p => (p.supplier||'').trim() === s.name.trim()).length
+  }));
+  showToast('שולח ספקים...');
+  const ok = await sendToSheets({ _type: 'suppliers', rows });
+  showToast(ok ? '✓ ספקים נשלחו ל-Sheets' : 'שגיאה בשליחה', ok ? '' : 'err');
+}
 
 // ── מלאי (Inventory) ──────────────────────────────────────────────
 let inventory = JSON.parse(localStorage.getItem('inventory') || '[]');
@@ -4478,8 +4763,11 @@ function renderProcItems() {
 }
 
 function renderProcSupplierList() {
-  const suppliers = [...new Set(procurements.map(p=>p.supplier).filter(Boolean))];
-  document.getElementById('p-supplier-list').innerHTML = suppliers.map(s=>`<option value="${escAttr(s)}">`).join('');
+  const fromProc = procurements.map(p=>p.supplier).filter(Boolean);
+  const fromDir  = suppliers.map(s=>s.name).filter(Boolean);
+  const all = [...new Set([...fromDir, ...fromProc])];
+  const el = document.getElementById('p-supplier-list');
+  if (el) el.innerHTML = all.map(s=>`<option value="${escAttr(s)}">`).join('');
 }
 
 function addProcCat() {
@@ -4551,7 +4839,7 @@ async function syncAll() {
 
 // ── Settings ──────────────────────────────────
 function exportAllData() {
-  const keys = ['plantSpecies','plantDefs','plantings','rotationPlan','rotationNotes','rotationDelivery','rotationClearance','orderOverrides','settings','tasks','inventory','procurements','wishlist','financeData'];
+  const keys = ['plantSpecies','plantDefs','plantings','rotationPlan','rotationNotes','rotationDelivery','rotationClearance','orderOverrides','settings','tasks','inventory','procurements','wishlist','financeData','suppliers'];
   const data = { _version: 1, _exported: new Date().toISOString(), _farm: settings.farmName || 'שלושה ברושים ירוקים-ראשי' };
   keys.forEach(k => { try { data[k] = JSON.parse(localStorage.getItem(k) || 'null'); } catch(e){} });
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
@@ -4699,7 +4987,7 @@ function importAllData(input) {
       const data = JSON.parse(e.target.result);
       if (!data._version) { showToast('קובץ לא תקין','err'); return; }
       if (!confirm('ייבוא יחליף את כל הנתונים הקיימים. להמשיך?')) return;
-      const keys = ['plantSpecies','plantDefs','plantings','rotationPlan','rotationNotes','rotationDelivery','rotationClearance','orderOverrides','settings','tasks','inventory','procurements','wishlist','financeData'];
+      const keys = ['plantSpecies','plantDefs','plantings','rotationPlan','rotationNotes','rotationDelivery','rotationClearance','orderOverrides','settings','tasks','inventory','procurements','wishlist','financeData','suppliers'];
       keys.forEach(k => { if (data[k] !== undefined && data[k] !== null) localStorage.setItem(k, JSON.stringify(data[k])); });
       document.getElementById('backup-info').textContent = '✓ יובא מ: ' + (data._farm||'') + ' · ' + (data._exported ? new Date(data._exported).toLocaleString('he-IL') : '');
       showToast('✓ נתונים יובאו — טוען מחדש...');
@@ -4789,7 +5077,7 @@ function syncToSheets() {
     method: 'POST',
     body: JSON.stringify({
       action: 'syncData',
-      data: { plantings, tasks, plantSpecies, plantDefs, settings, procurements: procurements, financeData, inventory }
+      data: { plantings, tasks, plantSpecies, plantDefs, settings, procurements: procurements, financeData, inventory, suppliers }
     })
   }).catch(e => console.log('Sync error:', e));
 }
