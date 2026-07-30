@@ -107,6 +107,10 @@
     .rec{background:var(--card);border-radius:12px;padding:13px;margin-bottom:10px;border-right:4px solid var(--g3);border:1px solid var(--border);border-right:4px solid var(--g3)}
     .rec.resting{border-right-color:var(--rest-border);background:var(--rest-bg)}
     .rec.cleared{border-right-color:var(--clear-border);background:var(--clear-bg)}
+    .rec.seeded{border-right-color:#d97706;background:#fffbeb}
+    .rec.sprayed{border-right-color:#4f46e5;background:#eef2ff}
+    .rec.seeded .rec-season{background:#fed7aa;color:#9a3412}
+    .rec.sprayed .rec-season{background:#e0e7ff;color:#3730a3}
     .rec-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
     .rec-title{font-weight:700;font-size:.97rem;color:var(--g1);line-height:1.3}
     .rec-season{font-size:.72rem;background:var(--g5);color:var(--g1);padding:2px 9px;border-radius:20px;white-space:nowrap;font-weight:600}
@@ -227,8 +231,7 @@
 </header>
 
 <nav>
-  <button class="active" onclick="switchTab('add')">🌱 שתילה</button>
-  <button onclick="switchTab('list')">📋 שתילות</button>
+  <button class="active" onclick="switchTab('beds')">🌱 מלאכת ערוגות</button>
   <button onclick="switchTab('tasks')">✅ משימות</button>
   <button onclick="switchTab('procurement')">🛒 רכש</button>
   <button onclick="switchTab('inventory')">📊 מלאי <span id="invNavBadge" style="display:none;background:#dc2626;color:#fff;border-radius:10px;padding:0 6px;font-size:.7rem;font-weight:700"></span></button>
@@ -238,9 +241,18 @@
   <button onclick="switchTab('settings')">⚙️ הגדרות</button>
 </nav>
 
-<!-- ══════════ ADD ══════════ -->
-<div id="view-add" class="view active">
-  <div class="card">
+<!-- ══════════ מלאכת ערוגות (טופס + רשימה) ══════════ -->
+<div id="view-beds" class="view active">
+
+  <!-- ── טופס הזנה (מתקפל) ── -->
+  <div class="card" style="padding:0;overflow:hidden">
+    <div onclick="toggleBedForm()" style="cursor:pointer;padding:12px 14px;background:var(--g5);display:flex;justify-content:space-between;align-items:center;gap:8px">
+      <span style="font-weight:700;color:var(--g1);font-size:.92rem">➕ תיעוד חדש</span>
+      <span id="bedFormToggle" style="font-size:.8rem;color:var(--g2);font-weight:600">▲ סגור</span>
+    </div>
+    <div id="bedFormBody" style="padding:14px">
+
+  <div>
 
     <div class="section-label">פרטי עונה וחלקה</div>
 
@@ -251,8 +263,8 @@
         <datalist id="season-list"></datalist>
       </div>
       <div>
-        <label>תאריך שתילה</label>
-        <input type="date" id="f-date">
+        <label id="f-date-label">תאריך</label>
+        <input type="date" id="f-date" onchange="previewPHI()">
       </div>
     </div>
 
@@ -274,6 +286,12 @@
     <div class="fg" style="display:flex;gap:8px;flex-wrap:wrap">
       <label style="display:flex;align-items:center;gap:6px;font-weight:600;cursor:pointer">
         <input type="radio" name="recType" value="plant" checked onchange="setRecType('plant')" style="width:auto"> 🌱 שתילה
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;font-weight:600;cursor:pointer">
+        <input type="radio" name="recType" value="seed" onchange="setRecType('seed')" style="width:auto"> 🌾 זריעה
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;font-weight:600;cursor:pointer">
+        <input type="radio" name="recType" value="spray" onchange="setRecType('spray')" style="width:auto"> 💨 ריסוס
       </label>
       <label style="display:flex;align-items:center;gap:6px;font-weight:600;cursor:pointer">
         <input type="radio" name="recType" value="rest" onchange="setRecType('rest')" style="width:auto"> 😴 מנוחה
@@ -313,6 +331,89 @@
       </div>
     </div>
 
+    <div id="seedFields" style="display:none">
+      <div class="section-label">פרטי זריעה</div>
+      <div class="fg">
+        <label>זן / סוג זרע</label>
+        <input type="text" id="f-seed-variety" placeholder="גזר, שמיר, כוסברה..." list="variety-list-3">
+        <datalist id="variety-list-3"></datalist>
+      </div>
+      <div class="fg g3">
+        <div>
+          <label>כמות</label>
+          <input type="number" id="f-seed-qty" placeholder="0" min="0" step="0.01">
+        </div>
+        <div>
+          <label>יחידה</label>
+          <select id="f-seed-unit">
+            <option value="גרם">גרם</option>
+            <option value="ק״ג">ק״ג</option>
+            <option value="שקיות">שקיות</option>
+            <option value="יחידות">יחידות</option>
+          </select>
+        </div>
+        <div>
+          <label>עומק זריעה (ס"מ)</label>
+          <input type="number" id="f-seed-depth" placeholder="1" min="0" step="0.1">
+        </div>
+      </div>
+      <div class="fg g3">
+        <div>
+          <label>מס' שורות</label>
+          <input type="number" id="f-seed-rows" placeholder="0" min="0">
+        </div>
+        <div>
+          <label>מרחק בין שורות (ס"מ)</label>
+          <input type="number" id="f-seed-dist" placeholder="30" min="0">
+        </div>
+        <div>
+          <label>שיטה</label>
+          <select id="f-seed-method">
+            <option value="">— בחר —</option>
+            <option value="ידני">ידני</option>
+            <option value="מזרעה">מזרעה</option>
+            <option value="פיזור">פיזור</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div id="sprayFields" style="display:none">
+      <div class="section-label">פרטי ריסוס</div>
+      <div class="fg g2">
+        <div>
+          <label>חומר / תכשיר</label>
+          <input type="text" id="f-spray-material" placeholder="שם התכשיר..." list="spray-material-list">
+          <datalist id="spray-material-list"></datalist>
+        </div>
+        <div>
+          <label>מזיק / מחלה</label>
+          <input type="text" id="f-spray-target" placeholder="כנימה, קמחון..." list="spray-target-list">
+          <datalist id="spray-target-list"></datalist>
+        </div>
+      </div>
+      <div class="fg g3">
+        <div>
+          <label>מינון</label>
+          <input type="text" id="f-spray-dose" placeholder='50 סמ"ק / 100 ל׳'>
+        </div>
+        <div>
+          <label>נפח תרסיס (ליטר)</label>
+          <input type="number" id="f-spray-volume" placeholder="0" min="0" step="0.1">
+        </div>
+        <div>
+          <label>ימי המתנה לקטיף <span class="tip" data-tip="מספר הימים שאסור לקטוף אחרי הריסוס.&#10;המערכת תחשב אוטומטית את התאריך המותר לקטיף."></span></label>
+          <input type="number" id="f-spray-phi" placeholder="0" min="0" oninput="previewPHI()">
+        </div>
+      </div>
+      <div id="phi-preview" style="display:none;background:#fef2f2;border:1.5px solid #fca5a5;border-radius:8px;padding:8px 11px;font-size:.85rem;font-weight:700;color:#991b1b;margin-bottom:12px"></div>
+      <div class="fg">
+        <label>מבצע הריסוס</label>
+        <input type="text" id="f-spray-by" placeholder="שם המרסס..." list="spray-by-list">
+        <datalist id="spray-by-list"></datalist>
+      </div>
+    </div>
+
     <div id="clearFields" style="display:none">
       <div class="section-label">פרטי חיסול</div>
       <div class="fg">
@@ -339,14 +440,97 @@
 
     <button class="btn btn-primary" id="saveBtn" onclick="savePlanting()">שמור ושלח ל-Sheets</button>
   </div>
-</div>
+    </div>
+  </div>
 
-<!-- ══════════ LIST ══════════ -->
-<div id="view-list" class="view">
+  <!-- ── שיגרת שדה ── -->
+  <div class="card" style="padding:0;overflow:hidden;border:1.5px solid #fbbf24">
+    <div onclick="toggleOpsPanel()" style="cursor:pointer;padding:12px 14px;background:#fef3c7;display:flex;justify-content:space-between;align-items:center;gap:8px">
+      <span style="font-weight:700;color:#92400e;font-size:.92rem">
+        🚜 שיגרת שדה <span id="opsDueBadge" style="display:none;background:#dc2626;color:#fff;border-radius:10px;padding:0 7px;font-size:.72rem;margin-right:4px"></span>
+      </span>
+      <span id="opsToggle" style="font-size:.8rem;color:#92400e;font-weight:600">▼ פתח</span>
+    </div>
+    <div id="opsBody" style="display:none;padding:14px">
+
+      <div id="opsAlerts"></div>
+
+      <div class="fg g2">
+        <div>
+          <label>סוג עבודה</label>
+          <select id="op-type"></select>
+        </div>
+        <div>
+          <label>תאריך</label>
+          <input type="date" id="op-date">
+        </div>
+      </div>
+      <div class="fg g2">
+        <div>
+          <label>חלקה</label>
+          <select id="op-field"></select>
+        </div>
+        <div>
+          <label>ערוגות (רשות)</label>
+          <input type="text" id="op-beds" placeholder="1-5, הכל...">
+        </div>
+      </div>
+      <div class="fg g3">
+        <div>
+          <label>מבצע</label>
+          <input type="text" id="op-by" placeholder="שם..." list="op-by-list">
+          <datalist id="op-by-list"></datalist>
+        </div>
+        <div>
+          <label>ציוד / כלי</label>
+          <input type="text" id="op-equipment" placeholder="טרקטור, מכסחה..." list="op-equip-list">
+          <datalist id="op-equip-list"></datalist>
+        </div>
+        <div>
+          <label>שעות עבודה</label>
+          <input type="number" id="op-hours" placeholder="0" min="0" step="0.5">
+        </div>
+      </div>
+      <div class="fg g2">
+        <div>
+          <label>סטטוס</label>
+          <select id="op-status">
+            <option value="planned">📅 מתוכנן</option>
+            <option value="done">✓ בוצע</option>
+          </select>
+        </div>
+        <div>
+          <label>חוזר כל (ימים) <span class="tip" data-tip="לעבודות שגרתיות שחוזרות על עצמן.&#10;כשמסמנים 'בוצע' — נוצרת אוטומטית העבודה הבאה בתאריך המתאים.&#10;השאירי ריק לעבודה חד-פעמית."></span></label>
+          <input type="number" id="op-repeat" placeholder="ריק = חד-פעמי" min="1">
+        </div>
+      </div>
+      <div class="fg">
+        <label>הערות</label>
+        <textarea id="op-notes" placeholder="פרטים, תקלות, תוצאות..." style="min-height:42px"></textarea>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" id="op-save-btn" onclick="saveFieldOp()" style="flex:1;background:#d97706;border-color:#d97706">הוסף לשיגרה</button>
+        <button class="btn btn-outline" onclick="clearOpForm()" style="width:auto;padding:12px 14px">ביטול</button>
+      </div>
+      <input type="hidden" id="op-edit-id">
+
+      <div style="display:flex;gap:6px;margin:12px 0 8px;overflow-x:auto;-webkit-overflow-scrolling:touch" id="opsFilterRow">
+        <button class="chip active" onclick="setOpsFilter('all',this)">הכל</button>
+        <button class="chip" onclick="setOpsFilter('planned',this)">📅 מתוכנן</button>
+        <button class="chip" onclick="setOpsFilter('done',this)">✓ בוצע</button>
+      </div>
+      <div class="search-wrap">
+        <input type="text" id="opsSearch" placeholder="חפש עבודה, חלקה, מבצע..." oninput="renderFieldOps()">
+      </div>
+      <div id="opsList"></div>
+      <button class="btn btn-outline btn-sm" onclick="exportFieldOpsToSheets()" style="margin-top:8px;border-color:#d97706;color:#d97706">שלח ל-Sheets</button>
+    </div>
+  </div>
+
   <div class="stats-grid">
-    <div class="stat"><div class="stat-n" id="st-total">0</div><div class="stat-l">שתילות</div></div>
+    <div class="stat"><div class="stat-n" id="st-total">0</div><div class="stat-l">שתילות/זריעות</div></div>
     <div class="stat"><div class="stat-n" id="st-fields">0</div><div class="stat-l">חלקות</div></div>
-    <div class="stat"><div class="stat-n" id="st-rest">0</div><div class="stat-l">מנוחה/חיסול</div></div>
+    <div class="stat"><div class="stat-n" id="st-rest">0</div><div class="stat-l">ריסוסים</div></div>
   </div>
 
   <div class="search-wrap">
@@ -358,6 +542,7 @@
   </div>
 
   <div id="recordsList"></div>
+
 </div>
 
 <!-- ══════════ TASKS ══════════ -->
@@ -1078,6 +1263,16 @@
   </div>
 
   <div class="card">
+    <div class="section-label">🚜 סוגי עבודה (שיגרת שדה)</div>
+    <p style="font-size:.82rem;color:var(--muted);margin-bottom:10px">סוגי העיבודים והעבודות שיופיעו בשיגרת שדה</p>
+    <div id="opTypeList" style="margin-bottom:10px"></div>
+    <div style="display:flex;gap:8px">
+      <input type="text" id="newOpType" placeholder="סוג עבודה חדש...">
+      <button onclick="addOpType()" style="flex-shrink:0;padding:9px 14px;background:#d97706;color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:700">+ הוסף</button>
+    </div>
+  </div>
+
+  <div class="card">
     <div class="section-label">📊 קטגוריות מלאי</div>
     <p style="font-size:.82rem;color:var(--muted);margin-bottom:10px">קטגוריות שיופיעו בטופס המלאי</p>
     <div id="invCatList" style="margin-bottom:10px"></div>
@@ -1146,6 +1341,12 @@
         <input type="radio" name="eRecType" value="plant" onchange="setEditRecType('plant')" style="width:auto"> 🌱 שתילה
       </label>
       <label style="display:flex;align-items:center;gap:6px;font-weight:600;cursor:pointer">
+        <input type="radio" name="eRecType" value="seed" onchange="setEditRecType('seed')" style="width:auto"> 🌾 זריעה
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;font-weight:600;cursor:pointer">
+        <input type="radio" name="eRecType" value="spray" onchange="setEditRecType('spray')" style="width:auto"> 💨 ריסוס
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;font-weight:600;cursor:pointer">
         <input type="radio" name="eRecType" value="rest" onchange="setEditRecType('rest')" style="width:auto"> 😴 מנוחה
       </label>
       <label style="display:flex;align-items:center;gap:6px;font-weight:600;cursor:pointer">
@@ -1162,6 +1363,39 @@
         <div><label>שלוחות</label><input type="number" id="e-shoots" min="0"></div>
       </div>
       <div class="fg"><label>מרחק בין צמחים (ס"מ)</label><input type="number" id="e-dist-plant" min="0"></div>
+    </div>
+
+    <div id="e-seedFields" style="display:none">
+      <div class="section-label">זריעה</div>
+      <div class="fg"><label>זן / סוג זרע</label><input type="text" id="e-seed-variety"></div>
+      <div class="fg g3">
+        <div><label>כמות</label><input type="number" id="e-seed-qty" min="0" step="0.01"></div>
+        <div><label>יחידה</label><select id="e-seed-unit">
+          <option value="גרם">גרם</option><option value="ק״ג">ק״ג</option>
+          <option value="שקיות">שקיות</option><option value="יחידות">יחידות</option></select></div>
+        <div><label>עומק (ס"מ)</label><input type="number" id="e-seed-depth" min="0" step="0.1"></div>
+      </div>
+      <div class="fg g3">
+        <div><label>שורות</label><input type="number" id="e-seed-rows" min="0"></div>
+        <div><label>מרחק שורות (ס"מ)</label><input type="number" id="e-seed-dist" min="0"></div>
+        <div><label>שיטה</label><select id="e-seed-method">
+          <option value="">—</option><option value="ידני">ידני</option>
+          <option value="מזרעה">מזרעה</option><option value="פיזור">פיזור</option></select></div>
+      </div>
+    </div>
+
+    <div id="e-sprayFields" style="display:none">
+      <div class="section-label">ריסוס</div>
+      <div class="fg g2">
+        <div><label>חומר / תכשיר</label><input type="text" id="e-spray-material"></div>
+        <div><label>מזיק / מחלה</label><input type="text" id="e-spray-target"></div>
+      </div>
+      <div class="fg g3">
+        <div><label>מינון</label><input type="text" id="e-spray-dose"></div>
+        <div><label>נפח (ליטר)</label><input type="number" id="e-spray-volume" min="0" step="0.1"></div>
+        <div><label>ימי המתנה</label><input type="number" id="e-spray-phi" min="0"></div>
+      </div>
+      <div class="fg"><label>מבצע הריסוס</label><input type="text" id="e-spray-by"></div>
     </div>
 
     <div id="e-clearFields" style="display:none">
@@ -1325,13 +1559,22 @@ document.addEventListener('DOMContentLoaded', () => {
   renderInvCatSelect();
   renderInventory();
   renderInvDatalists();
+  document.getElementById('op-date').value = today();
+  renderOpTypeSelect();
+  renderOpFieldSelect();
+  renderFieldOps();
+  renderOpDatalists();
+  toggleOpsPanel(localStorage.getItem('opsPanelOpen') === '1');
 
   // חזרה ללשונית שבה היית לפני הרענון
   try {
-    const savedTab = localStorage.getItem('activeTab');
-    if (savedTab && savedTab !== 'add' && document.getElementById('view-' + savedTab)) {
+    let savedTab = localStorage.getItem('activeTab');
+    if (savedTab === 'add' || savedTab === 'list') savedTab = 'beds';   // תאימות לגרסה קודמת
+    if (savedTab && savedTab !== 'beds' && document.getElementById('view-' + savedTab)) {
       switchTab(savedTab);
     }
+    // מצב קיפול הטופס
+    toggleBedForm(localStorage.getItem('bedFormOpen') !== '0');
   } catch(e) {}
 });
 
@@ -1355,24 +1598,71 @@ function switchTab(tab, el) {
   if (btn) btn.classList.add('active');
 
   try { localStorage.setItem('activeTab', tab); } catch(e) {}
-  if (tab === 'list')        renderList();
+  if (tab === 'beds')        { renderList(); renderFieldOps(); }
   if (tab === 'tasks')       renderTasksList();
   if (tab === 'procurement') { renderProcCatSelect(); renderProcList(); renderProcSupplierList(); renderWishlist(); renderSuppliersList(); }
   if (tab === 'inventory')   { renderInvCatSelect(); renderInventory(); renderInvDatalists(); }
   if (tab === 'orders')      { renderOrderFieldSelect(); renderCalcFieldSelect(); renderSpeciesSelect(); renderSpeciesList(); renderOrderSeasonFilter(); renderOrderTable(); }
   if (tab === 'rotation')    { renderRotationSeasons(); renderRotation(); }
   if (tab === 'finance')     { renderFinance(); }
-  if (tab === 'settings')    { renderFieldDefsList(); renderFieldsList(); renderProcCatList(); renderInvCatList(); }
+  if (tab === 'settings')    { renderFieldDefsList(); renderFieldsList(); renderProcCatList(); renderInvCatList(); renderOpTypeList(); }
 }
 
 // ── Record type toggle ─────────────────────────
+const REC_TYPES = {
+  plant: { label:'שתילה', icon:'🌱', cls:'' },
+  seed:  { label:'זריעה', icon:'🌾', cls:'seeded' },
+  spray: { label:'ריסוס', icon:'💨', cls:'sprayed' },
+  rest:  { label:'מנוחה', icon:'😴', cls:'resting' },
+  clear: { label:'חיסול', icon:'🪓', cls:'cleared' }
+};
+
 function setRecType(type) {
   document.getElementById('plantingFields').style.display = type === 'plant' ? 'block' : 'none';
+  document.getElementById('seedFields').style.display     = type === 'seed'  ? 'block' : 'none';
+  document.getElementById('sprayFields').style.display    = type === 'spray' ? 'block' : 'none';
   document.getElementById('clearFields').style.display    = type === 'clear' ? 'block' : 'none';
+  const dl = document.getElementById('f-date-label');
+  if (dl) dl.textContent = type === 'spray' ? 'תאריך ריסוס' : type === 'seed' ? 'תאריך זריעה' : 'תאריך';
+  if (type === 'spray') previewPHI();
 }
+
 function setEditRecType(type) {
   document.getElementById('e-plantingFields').style.display = type === 'plant' ? 'block' : 'none';
+  document.getElementById('e-seedFields').style.display     = type === 'seed'  ? 'block' : 'none';
+  document.getElementById('e-sprayFields').style.display    = type === 'spray' ? 'block' : 'none';
   document.getElementById('e-clearFields').style.display    = type === 'clear' ? 'block' : 'none';
+}
+
+// ── קיפול טופס ההזנה ──────────────────────────
+function toggleBedForm(force) {
+  const body = document.getElementById('bedFormBody');
+  const tog  = document.getElementById('bedFormToggle');
+  if (!body) return;
+  const open = force !== undefined ? force : body.style.display === 'none';
+  body.style.display = open ? 'block' : 'none';
+  if (tog) tog.textContent = open ? '▲ סגור' : '▼ פתח';
+  try { localStorage.setItem('bedFormOpen', open ? '1' : '0'); } catch(e) {}
+}
+
+// ── חישוב תאריך מותר לקטיף אחרי ריסוס ─────────
+function phiDate(dateStr, days) {
+  if (!dateStr || !days) return '';
+  const d = new Date(dateStr + 'T00:00:00');
+  if (isNaN(d.getTime())) return '';
+  d.setDate(d.getDate() + parseInt(days));
+  return _localISO(d);
+}
+
+function previewPHI() {
+  const el = document.getElementById('phi-preview');
+  if (!el) return;
+  const date = document.getElementById('f-date')?.value;
+  const phi  = document.getElementById('f-spray-phi')?.value;
+  const iso  = phiDate(date, phi);
+  if (!iso) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.textContent = '⚠️ אין לקטוף עד ' + formatDate(iso);
 }
 
 // ── Field (חלקה) management ───────────────────
@@ -1480,6 +1770,9 @@ async function savePlanting() {
   if (!season || !date || !field) { showToast('נא למלא עונה, תאריך וחלקה','err'); return; }
 
   let variety='',qty='',rows='',shoots='',distPlant='',clearVariety='',harvestWeight='',lastHarvest='';
+  let seedVariety='',seedQty='',seedUnit='',seedDepth='',seedRows='',seedDist='',seedMethod='';
+  let sprayMaterial='',sprayTarget='',sprayDose='',sprayVolume='',sprayPHI='',sprayBy='';
+
   if (recType === 'plant') {
     variety   = document.getElementById('f-variety').value.trim();
     qty       = document.getElementById('f-qty').value;
@@ -1487,6 +1780,25 @@ async function savePlanting() {
     shoots    = document.getElementById('f-shoots').value;
     distPlant = document.getElementById('f-dist-plant').value;
     if (!variety) { showToast('נא למלא זן הצמח','err'); return; }
+  }
+  if (recType === 'seed') {
+    seedVariety = document.getElementById('f-seed-variety').value.trim();
+    seedQty     = document.getElementById('f-seed-qty').value;
+    seedUnit    = document.getElementById('f-seed-unit').value;
+    seedDepth   = document.getElementById('f-seed-depth').value;
+    seedRows    = document.getElementById('f-seed-rows').value;
+    seedDist    = document.getElementById('f-seed-dist').value;
+    seedMethod  = document.getElementById('f-seed-method').value;
+    if (!seedVariety) { showToast('נא למלא זן הזרע','err'); return; }
+  }
+  if (recType === 'spray') {
+    sprayMaterial = document.getElementById('f-spray-material').value.trim();
+    sprayTarget   = document.getElementById('f-spray-target').value.trim();
+    sprayDose     = document.getElementById('f-spray-dose').value.trim();
+    sprayVolume   = document.getElementById('f-spray-volume').value;
+    sprayPHI      = document.getElementById('f-spray-phi').value;
+    sprayBy       = document.getElementById('f-spray-by').value.trim();
+    if (!sprayMaterial) { showToast('נא למלא שם התכשיר','err'); return; }
   }
   if (recType === 'clear') {
     clearVariety  = document.getElementById('f-clear-variety').value.trim();
@@ -1502,6 +1814,9 @@ async function savePlanting() {
     id: Date.now(), recType, season, date, field, bed,
     variety, qty, rows, shoots, distPlant,
     clearVariety, harvestWeight, lastHarvest,
+    seedVariety, seedQty, seedUnit, seedDepth, seedRows, seedDist, seedMethod,
+    sprayMaterial, sprayTarget, sprayDose, sprayVolume, sprayPHI, sprayBy,
+    sprayUntil: recType === 'spray' ? phiDate(date, sprayPHI) : '',
     notes, log: [], synced: false,
     createdAt: new Date().toISOString()
   };
@@ -1512,8 +1827,16 @@ async function savePlanting() {
   plantings.unshift(rec);
   save();
 
-  ['f-variety','f-notes','f-clear-variety'].forEach(id => document.getElementById(id).value = '');
-  ['f-qty','f-rows','f-shoots','f-dist-plant','f-harvest-weight'].forEach(id => document.getElementById(id).value = '');
+  ['f-variety','f-notes','f-clear-variety','f-seed-variety','f-spray-material',
+   'f-spray-target','f-spray-dose','f-spray-by'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  ['f-qty','f-rows','f-shoots','f-dist-plant','f-harvest-weight','f-seed-qty',
+   'f-seed-depth','f-seed-rows','f-seed-dist','f-spray-volume','f-spray-phi'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  const sm = document.getElementById('f-seed-method'); if (sm) sm.value = '';
+  const pp = document.getElementById('phi-preview');   if (pp) pp.style.display = 'none';
   document.getElementById('f-last-harvest').value = '';
   document.getElementById('f-date').value = today();
   document.getElementById('f-bed').value = '';
@@ -1524,6 +1847,7 @@ async function savePlanting() {
   btn.disabled = false;
   btn.innerHTML = 'שמור ושלח ל-Sheets';
   renderAutocomplete();
+  renderList();
   showToast(synced ? '✓ נשמר ונשלח ל-Sheets' : '✓ נשמר מקומית');
 }
 
@@ -1533,12 +1857,14 @@ function renderList() {
   let filtered = [...plantings];
   if (activeFilter) filtered = filtered.filter(p => p.season === activeFilter);
   if (search) filtered = filtered.filter(p =>
-    (p.field+p.bed+p.variety+p.season+p.notes+p.clearVariety).toLowerCase().includes(search)
+    ((p.field||'')+(p.bed||'')+(p.variety||'')+(p.season||'')+(p.notes||'')+(p.clearVariety||'')
+     +(p.seedVariety||'')+(p.sprayMaterial||'')+(p.sprayTarget||'')+(p.sprayBy||''))
+      .toLowerCase().includes(search)
   );
 
-  document.getElementById('st-total').textContent  = plantings.filter(p=>p.recType==='plant'||!p.recType).length;
+  document.getElementById('st-total').textContent  = plantings.filter(p=>p.recType==='plant'||p.recType==='seed'||!p.recType).length;
   document.getElementById('st-fields').textContent = [...new Set(plantings.map(p=>p.field))].length;
-  document.getElementById('st-rest').textContent   = plantings.filter(p=>p.recType==='rest'||p.recType==='clear').length;
+  document.getElementById('st-rest').textContent   = plantings.filter(p=>p.recType==='spray').length;
 
   const seasons = [...new Set(plantings.map(p=>p.season))].filter(Boolean);
   const fr = document.getElementById('filterRow');
@@ -1583,6 +1909,29 @@ function recCard(p) {
       p.shoots    ? `<span class="badge b-amber">שלוחות: ${p.shoots}</span>` : '',
       p.distPlant ? `<span class="badge b-blue">↔ ${p.distPlant} ס"מ</span>` : '',
     ].join('');
+  } else if (type === 'seed') {
+    badges = [
+      '<span class="badge b-amber">🌾 זריעה</span>',
+      p.seedVariety ? `<span class="badge b-green">🌿 ${escHtml(p.seedVariety)}</span>` : '',
+      p.seedQty     ? `<span class="badge b-gray">${p.seedQty} ${escHtml(p.seedUnit||'')}</span>` : '',
+      p.seedRows    ? `<span class="badge b-gray">${p.seedRows} שורות</span>` : '',
+      p.seedDist    ? `<span class="badge b-blue">↔ ${p.seedDist} ס"מ</span>` : '',
+      p.seedDepth   ? `<span class="badge b-gray">עומק ${p.seedDepth} ס"מ</span>` : '',
+      p.seedMethod  ? `<span class="badge b-gray">${escHtml(p.seedMethod)}</span>` : '',
+    ].join('');
+  } else if (type === 'spray') {
+    const until = p.sprayUntil || phiDate(p.date, p.sprayPHI);
+    const stillWaiting = until && until >= today();
+    badges = [
+      '<span class="badge" style="background:#e0e7ff;color:#3730a3">💨 ריסוס</span>',
+      p.sprayMaterial ? `<span class="badge b-green">🧪 ${escHtml(p.sprayMaterial)}</span>` : '',
+      p.sprayTarget   ? `<span class="badge b-amber">🎯 ${escHtml(p.sprayTarget)}</span>` : '',
+      p.sprayDose     ? `<span class="badge b-gray">מינון: ${escHtml(p.sprayDose)}</span>` : '',
+      p.sprayVolume   ? `<span class="badge b-gray">${p.sprayVolume} ל׳</span>` : '',
+      p.sprayBy       ? `<span class="badge b-blue">👤 ${escHtml(p.sprayBy)}</span>` : '',
+      until ? `<span class="badge" style="background:${stillWaiting?'#fee2e2':'#d1fae5'};color:${stillWaiting?'#991b1b':'#065f46'};font-weight:700">
+        ${stillWaiting ? '⛔ אין לקטוף עד' : '✓ מותר לקטיף מ-'} ${formatDate(until)}</span>` : '',
+    ].join('');
   } else if (type === 'rest') {
     badges = '<span class="badge b-rest">😴 מנוחה עונתית</span>';
   } else if (type === 'clear') {
@@ -1594,8 +1943,9 @@ function recCard(p) {
     ].join('');
   }
 
-  const cls = type === 'rest' ? 'resting' : type === 'clear' ? 'cleared' : '';
-  const seasonLabel = type === 'rest' ? '😴 מנוחה' : type === 'clear' ? '🪓 חיסול' : formatDate(p.date);
+  const cls = (REC_TYPES[type] && REC_TYPES[type].cls) || '';
+  const seasonLabel = type === 'plant' ? formatDate(p.date)
+    : (REC_TYPES[type] ? REC_TYPES[type].icon + ' ' + REC_TYPES[type].label : formatDate(p.date));
 
   return `
   <div class="rec ${cls}" id="rec-${p.id}">
@@ -1678,6 +2028,21 @@ function openEdit(id) {
   document.getElementById('e-rows').value      = p.rows || '';
   document.getElementById('e-shoots').value    = p.shoots || '';
   document.getElementById('e-dist-plant').value= p.distPlant || '';
+  // seed
+  document.getElementById('e-seed-variety').value = p.seedVariety || '';
+  document.getElementById('e-seed-qty').value     = p.seedQty || '';
+  document.getElementById('e-seed-unit').value    = p.seedUnit || 'גרם';
+  document.getElementById('e-seed-depth').value   = p.seedDepth || '';
+  document.getElementById('e-seed-rows').value    = p.seedRows || '';
+  document.getElementById('e-seed-dist').value    = p.seedDist || '';
+  document.getElementById('e-seed-method').value  = p.seedMethod || '';
+  // spray
+  document.getElementById('e-spray-material').value = p.sprayMaterial || '';
+  document.getElementById('e-spray-target').value   = p.sprayTarget || '';
+  document.getElementById('e-spray-dose').value     = p.sprayDose || '';
+  document.getElementById('e-spray-volume').value   = p.sprayVolume || '';
+  document.getElementById('e-spray-phi').value      = p.sprayPHI || '';
+  document.getElementById('e-spray-by').value       = p.sprayBy || '';
   // clear
   document.getElementById('e-clear-variety').value  = p.clearVariety || '';
   document.getElementById('e-harvest-weight').value = p.harvestWeight || '';
@@ -1704,6 +2069,20 @@ function saveEdit() {
   p.rows         = document.getElementById('e-rows').value;
   p.shoots       = document.getElementById('e-shoots').value;
   p.distPlant    = document.getElementById('e-dist-plant').value;
+  p.seedVariety  = document.getElementById('e-seed-variety').value.trim();
+  p.seedQty      = document.getElementById('e-seed-qty').value;
+  p.seedUnit     = document.getElementById('e-seed-unit').value;
+  p.seedDepth    = document.getElementById('e-seed-depth').value;
+  p.seedRows     = document.getElementById('e-seed-rows').value;
+  p.seedDist     = document.getElementById('e-seed-dist').value;
+  p.seedMethod   = document.getElementById('e-seed-method').value;
+  p.sprayMaterial= document.getElementById('e-spray-material').value.trim();
+  p.sprayTarget  = document.getElementById('e-spray-target').value.trim();
+  p.sprayDose    = document.getElementById('e-spray-dose').value.trim();
+  p.sprayVolume  = document.getElementById('e-spray-volume').value;
+  p.sprayPHI     = document.getElementById('e-spray-phi').value;
+  p.sprayBy      = document.getElementById('e-spray-by').value.trim();
+  p.sprayUntil   = type === 'spray' ? phiDate(p.date, p.sprayPHI) : '';
   p.clearVariety = document.getElementById('e-clear-variety').value.trim();
   p.harvestWeight= document.getElementById('e-harvest-weight').value;
   p.lastHarvest  = document.getElementById('e-last-harvest').value;
@@ -3806,7 +4185,7 @@ function fixOldRowsFormat() {
 }
 
 function exportAppData() {
-  var keys = ['plantDefs','plantSpecies','plantings','rotationPlan','rotationNotes','rotationDelivery','rotationClearance','fieldDefs','settings','cropGroups','fields','procCats','inventory','procurements','wishlist','financeData','suppliers'];
+  var keys = ['plantDefs','plantSpecies','plantings','rotationPlan','rotationNotes','rotationDelivery','rotationClearance','fieldDefs','settings','cropGroups','fields','procCats','inventory','procurements','wishlist','financeData','suppliers','fieldOps'];
   var data = { _version: 1, _date: new Date().toISOString() };
   keys.forEach(function(k) {
     var v = localStorage.getItem(k);
@@ -3829,7 +4208,7 @@ function importAppData(input) {
       var data = JSON.parse(e.target.result);
       if (!data._version) { showToast('קובץ לא תקין','err'); return; }
       if (!confirm('⚠️ זה ידרוס את כל הנתונים הנוכחיים. להמשיך?')) return;
-      var keys = ['plantDefs','plantSpecies','plantings','rotationPlan','rotationNotes','rotationDelivery','rotationClearance','fieldDefs','settings','cropGroups','fields','procCats','inventory','procurements','wishlist','financeData','suppliers'];
+      var keys = ['plantDefs','plantSpecies','plantings','rotationPlan','rotationNotes','rotationDelivery','rotationClearance','fieldDefs','settings','cropGroups','fields','procCats','inventory','procurements','wishlist','financeData','suppliers','fieldOps'];
       keys.forEach(function(k) {
         if (data[k] !== undefined) localStorage.setItem(k, JSON.stringify(data[k]));
       });
@@ -4067,6 +4446,345 @@ function saveProc() { localStorage.setItem('procurements', JSON.stringify(procur
 function _safeScroll(id) {
   const el = document.getElementById(id);
   if (el && typeof el.scrollIntoView === 'function') el.scrollIntoView({block:'center'});
+}
+
+// ── שיגרת שדה (Field Operations) ──────────────────────────────────
+let fieldOps = JSON.parse(localStorage.getItem('fieldOps') || '[]');
+let opsFilter = 'all';
+if (!settings.opTypes) settings.opTypes = [
+  'חריש','דיסקוס','קילטור','יישור / תיחוח','דישון','זיבול',
+  'חיפוי / פריסת ניילון','הנחת טפטופים','עישוב','ניכוש','גיזום',
+  'ניקוי שטח','תיקון השקיה','סימון ערוגות','אחר'
+];
+
+function saveFieldOps() {
+  localStorage.setItem('fieldOps', JSON.stringify(fieldOps));
+  syncToSheets();
+}
+
+function toggleOpsPanel(force) {
+  const body = document.getElementById('opsBody');
+  const tog  = document.getElementById('opsToggle');
+  if (!body) return;
+  const open = force !== undefined ? force : body.style.display === 'none';
+  body.style.display = open ? 'block' : 'none';
+  if (tog) tog.textContent = open ? '▲ סגור' : '▼ פתח';
+  try { localStorage.setItem('opsPanelOpen', open ? '1' : '0'); } catch(e) {}
+  if (open) renderFieldOps();
+}
+
+function renderOpTypeSelect() {
+  const sel = document.getElementById('op-type');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— בחר סוג עבודה —</option>' +
+    settings.opTypes.map(t => `<option value="${escAttr(t)}"${t===cur?' selected':''}>${escHtml(t)}</option>`).join('');
+}
+
+function renderOpFieldSelect() {
+  const sel = document.getElementById('op-field');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— כל השדה —</option>' +
+    settings.fields.map(f => `<option value="${escAttr(f)}"${f===cur?' selected':''}>${escHtml(f)}</option>`).join('');
+}
+
+function renderOpDatalists() {
+  const bys     = [...new Set(fieldOps.map(o=>o.by).filter(Boolean))];
+  const equips  = [...new Set(fieldOps.map(o=>o.equipment).filter(Boolean))];
+  const b = document.getElementById('op-by-list');
+  const e = document.getElementById('op-equip-list');
+  if (b) b.innerHTML = bys.map(v=>`<option value="${escAttr(v)}">`).join('');
+  if (e) e.innerHTML = equips.map(v=>`<option value="${escAttr(v)}">`).join('');
+}
+
+function saveFieldOp() {
+  const type = document.getElementById('op-type').value;
+  if (!type) { showToast('נא לבחור סוג עבודה','err'); return; }
+  const date = document.getElementById('op-date').value;
+  if (!date) { showToast('נא לבחור תאריך','err'); return; }
+
+  const editId = document.getElementById('op-edit-id').value;
+  const op = {
+    id:        editId ? parseInt(editId) : Date.now(),
+    type, date,
+    field:     document.getElementById('op-field').value,
+    beds:      document.getElementById('op-beds').value.trim(),
+    by:        document.getElementById('op-by').value.trim(),
+    equipment: document.getElementById('op-equipment').value.trim(),
+    hours:     document.getElementById('op-hours').value,
+    status:    document.getElementById('op-status').value,
+    repeat:    parseInt(document.getElementById('op-repeat').value) || 0,
+    notes:     document.getElementById('op-notes').value.trim(),
+    updatedAt: new Date().toISOString()
+  };
+
+  if (editId) {
+    const i = fieldOps.findIndex(x => x.id === op.id);
+    if (i >= 0) fieldOps[i] = op;
+  } else {
+    fieldOps.unshift(op);
+  }
+
+  saveFieldOps();
+  clearOpForm();
+  renderFieldOps();
+  renderOpDatalists();
+  showToast('✓ נשמר בשיגרת שדה');
+}
+
+function clearOpForm() {
+  ['op-beds','op-by','op-equipment','op-hours','op-repeat','op-notes']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  document.getElementById('op-type').value   = '';
+  document.getElementById('op-field').value  = '';
+  document.getElementById('op-status').value = 'planned';
+  document.getElementById('op-date').value   = today();
+  document.getElementById('op-edit-id').value = '';
+  document.getElementById('op-save-btn').textContent = 'הוסף לשיגרה';
+}
+
+function editFieldOp(id) {
+  const o = fieldOps.find(x => x.id === id);
+  if (!o) return;
+  renderOpTypeSelect(); renderOpFieldSelect();
+  document.getElementById('op-type').value      = o.type || '';
+  document.getElementById('op-date').value      = o.date || '';
+  document.getElementById('op-field').value     = o.field || '';
+  document.getElementById('op-beds').value      = o.beds || '';
+  document.getElementById('op-by').value        = o.by || '';
+  document.getElementById('op-equipment').value = o.equipment || '';
+  document.getElementById('op-hours').value     = o.hours || '';
+  document.getElementById('op-status').value    = o.status || 'planned';
+  document.getElementById('op-repeat').value    = o.repeat || '';
+  document.getElementById('op-notes').value     = o.notes || '';
+  document.getElementById('op-edit-id').value   = o.id;
+  document.getElementById('op-save-btn').textContent = 'עדכן עבודה';
+  toggleOpsPanel(true);
+  _safeScroll('op-type');
+}
+
+function deleteFieldOp(id) {
+  const o = fieldOps.find(x => x.id === id);
+  if (!o) return;
+  if (!confirm('למחוק את "' + o.type + '" מ-' + formatDate(o.date) + '?')) return;
+  fieldOps = fieldOps.filter(x => x.id !== id);
+  saveFieldOps();
+  renderFieldOps();
+  showToast('נמחק');
+}
+
+// סימון כבוצע — אם העבודה חוזרת, נוצרת אוטומטית ההופעה הבאה
+function markOpDone(id) {
+  const o = fieldOps.find(x => x.id === id);
+  if (!o) return;
+  o.status = 'done';
+  o.doneDate = today();
+  o.updatedAt = new Date().toISOString();
+
+  let msg = '✓ בוצע';
+  if (o.repeat > 0) {
+    const next = new Date(o.date + 'T00:00:00');
+    next.setDate(next.getDate() + o.repeat);
+    const nextISO = _localISO(next);
+    const exists = fieldOps.some(x =>
+      x.type === o.type && x.field === o.field && x.date === nextISO && x.status === 'planned');
+    if (!exists) {
+      fieldOps.unshift({
+        id: Date.now(),
+        type: o.type, date: nextISO, field: o.field, beds: o.beds,
+        by: o.by, equipment: o.equipment, hours: '',
+        status: 'planned', repeat: o.repeat, notes: o.notes,
+        updatedAt: new Date().toISOString()
+      });
+      msg = '✓ בוצע — נקבע שוב ל-' + formatDate(nextISO);
+    }
+  }
+  saveFieldOps();
+  renderFieldOps();
+  showToast(msg);
+}
+
+function reopenFieldOp(id) {
+  const o = fieldOps.find(x => x.id === id);
+  if (!o) return;
+  o.status = 'planned';
+  o.doneDate = '';
+  saveFieldOps();
+  renderFieldOps();
+}
+
+function setOpsFilter(val, el) {
+  opsFilter = val;
+  document.querySelectorAll('#opsFilterRow .chip').forEach(c => c.classList.remove('active'));
+  if (el) el.classList.add('active');
+  renderFieldOps();
+}
+
+function _opsDue() {
+  const t = today();
+  return fieldOps.filter(o => o.status === 'planned' && o.date <= t);
+}
+
+function renderOpsAlerts() {
+  const el = document.getElementById('opsAlerts');
+  const badge = document.getElementById('opsDueBadge');
+  const due = _opsDue();
+  if (badge) {
+    if (due.length) { badge.style.display = 'inline-block'; badge.textContent = due.length; }
+    else badge.style.display = 'none';
+  }
+  if (!el) return;
+  if (!due.length) { el.innerHTML = ''; return; }
+  const t = today();
+  el.innerHTML = `
+    <div style="background:#fef2f2;border:1.5px solid #fca5a5;border-radius:10px;padding:10px 12px;margin-bottom:12px">
+      <div style="font-weight:700;color:#991b1b;font-size:.85rem;margin-bottom:6px">⏰ עבודות שהגיע זמנן — ${due.length}</div>
+      <div class="badges" style="gap:6px">
+        ${due.sort((a,b)=>a.date.localeCompare(b.date)).map(o => `
+          <span class="badge" style="background:#fee2e2;color:#991b1b;font-size:.79rem;padding:4px 10px;cursor:pointer"
+            onclick="editFieldOp(${o.id})">
+            ${escHtml(o.type)}${o.field?' · '+escHtml(o.field):''} — ${formatDate(o.date)}${o.date<t?' (באיחור)':''}
+          </span>`).join('')}
+      </div>
+    </div>`;
+}
+
+function renderFieldOps() {
+  renderOpTypeSelect();
+  renderOpFieldSelect();
+  renderOpsAlerts();
+
+  const el = document.getElementById('opsList');
+  if (!el) return;
+  const q = (document.getElementById('opsSearch')?.value || '').toLowerCase();
+
+  let list = [...fieldOps];
+  if (opsFilter !== 'all') list = list.filter(o => o.status === opsFilter);
+  if (q) list = list.filter(o =>
+    ((o.type||'')+(o.field||'')+(o.beds||'')+(o.by||'')+(o.equipment||'')+(o.notes||''))
+      .toLowerCase().includes(q));
+
+  if (!list.length) {
+    el.innerHTML = '<div class="empty" style="padding:24px"><div class="icon">🚜</div><p>אין עבודות רשומות</p></div>';
+    return;
+  }
+
+  // מתוכננות קודם (הקרובות ראשונות), אחר כך שבוצעו (החדשות ראשונות)
+  const planned = list.filter(o=>o.status==='planned').sort((a,b)=>a.date.localeCompare(b.date));
+  const done    = list.filter(o=>o.status!=='planned').sort((a,b)=>b.date.localeCompare(a.date));
+
+  let html = '';
+  if (planned.length) {
+    html += '<div class="season-group-title">📅 מתוכנן</div>' + planned.map(opCard).join('');
+  }
+  if (done.length) {
+    const byMonth = {};
+    done.forEach(o => {
+      const parts = (o.date||'').split('-');
+      const k = parts.length===3 ? parts[1]+'/'+parts[0] : 'ללא תאריך';
+      if (!byMonth[k]) byMonth[k] = [];
+      byMonth[k].push(o);
+    });
+    html += Object.entries(byMonth).map(([m, ops]) =>
+      `<div class="season-group-title">✓ בוצע — ${m}</div>` + ops.map(opCard).join('')).join('');
+  }
+  el.innerHTML = html;
+}
+
+function opCard(o) {
+  const t = today();
+  const isDone = o.status === 'done';
+  const overdue = !isDone && o.date < t;
+  const dueToday = !isDone && o.date === t;
+  const borderColor = isDone ? '#9ca3af' : overdue ? '#dc2626' : dueToday ? '#f59e0b' : '#d97706';
+  const bg = isDone ? '#fff' : overdue ? '#fef2f2' : dueToday ? '#fffbeb' : '#fff';
+
+  const statusChip = isDone
+    ? '<span class="status-chip s-done">✓ בוצע</span>'
+    : overdue
+      ? '<span class="status-chip s-open">⚠️ באיחור</span>'
+      : dueToday
+        ? '<span class="status-chip s-wip">היום</span>'
+        : '<span class="status-chip" style="background:#e0e7ff;color:#3730a3">📅 מתוכנן</span>';
+
+  const meta = [
+    o.field ? '📍 ' + escHtml(o.field) : '📍 כל השדה',
+    o.beds ? 'ערוגות: ' + escHtml(o.beds) : '',
+    o.by ? '👤 ' + escHtml(o.by) : '',
+    o.equipment ? '🔧 ' + escHtml(o.equipment) : '',
+    o.hours ? '⏱️ ' + o.hours + ' ש׳' : '',
+    o.repeat ? '🔁 כל ' + o.repeat + ' ימים' : '',
+  ].filter(Boolean).map(x => '<span>' + x + '</span>').join('');
+
+  return `
+  <div class="task-card" style="border-right-color:${borderColor};background:${bg}">
+    <div class="task-head">
+      <div class="task-title ${isDone?'done-text':''}">${escHtml(o.type)}</div>
+      ${statusChip}
+    </div>
+    <div class="task-meta">
+      <span style="font-weight:700;color:${overdue?'#991b1b':'var(--g2)'}">${formatDate(o.date)}</span>
+      ${meta}
+      ${o.doneDate && o.doneDate !== o.date ? '<span>בוצע בפועל: ' + formatDate(o.doneDate) + '</span>' : ''}
+    </div>
+    ${o.notes ? `<div class="rec-note">${escHtml(o.notes)}</div>` : ''}
+    <div class="task-actions">
+      ${!isDone ? `<button class="btn-ghost" onclick="markOpDone(${o.id})" style="color:#10b981">✓ בוצע</button>` : ''}
+      ${isDone  ? `<button class="btn-ghost" onclick="reopenFieldOp(${o.id})">↩ פתח מחדש</button>` : ''}
+      <button class="btn-ghost" onclick="editFieldOp(${o.id})">✏️</button>
+      <button class="btn-ghost del" onclick="deleteFieldOp(${o.id})">🗑</button>
+    </div>
+  </div>`;
+}
+
+async function exportFieldOpsToSheets() {
+  if (!settings.scriptUrl) { showToast('הגדר Sheets URL תחילה','err'); return; }
+  if (!fieldOps.length) { showToast('אין עבודות לשליחה','err'); return; }
+  const rows = fieldOps.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(o => ({
+    date: o.date, type: o.type, field: o.field || 'כל השדה', beds: o.beds || '',
+    by: o.by || '', equipment: o.equipment || '', hours: o.hours || '',
+    status: o.status === 'done' ? 'בוצע' : 'מתוכנן',
+    doneDate: o.doneDate || '', repeat: o.repeat || '', notes: o.notes || ''
+  }));
+  showToast('שולח שיגרת שדה...');
+  const ok = await sendToSheets({ _type: 'fieldops', rows });
+  showToast(ok ? '✓ שיגרת שדה נשלחה ל-Sheets' : 'שגיאה בשליחה', ok ? '' : 'err');
+}
+
+// ניהול סוגי עבודה (הגדרות)
+function renderOpTypeList() {
+  const el = document.getElementById('opTypeList');
+  if (!el) return;
+  if (!settings.opTypes.length) { el.innerHTML = '<p style="font-size:.82rem;color:var(--muted)">אין סוגי עבודה</p>'; return; }
+  el.innerHTML = settings.opTypes.map((t,i) => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:.9rem">${escHtml(t)}</span>
+      <button class="btn-ghost del" onclick="removeOpType(${i})">✕</button>
+    </div>`).join('');
+}
+
+function addOpType() {
+  const input = document.getElementById('newOpType');
+  const name = input.value.trim();
+  if (!name) return;
+  if (settings.opTypes.includes(name)) { showToast('סוג עבודה קיים','err'); return; }
+  settings.opTypes.push(name);
+  saveSettings(false);
+  input.value = '';
+  renderOpTypeSelect();
+  renderOpTypeList();
+  showToast('סוג עבודה נוסף');
+}
+
+function removeOpType(i) {
+  const name = settings.opTypes[i];
+  const used = fieldOps.filter(o => o.type === name).length;
+  if (used && !confirm(`יש ${used} עבודות מסוג "${name}".\nהרשומות לא יימחקו. להסיר מהרשימה?`)) return;
+  settings.opTypes.splice(i,1);
+  saveSettings(false);
+  renderOpTypeSelect();
+  renderOpTypeList();
 }
 
 // ── ספקים (Suppliers) ─────────────────────────────────────────────
@@ -4839,7 +5557,7 @@ async function syncAll() {
 
 // ── Settings ──────────────────────────────────
 function exportAllData() {
-  const keys = ['plantSpecies','plantDefs','plantings','rotationPlan','rotationNotes','rotationDelivery','rotationClearance','orderOverrides','settings','tasks','inventory','procurements','wishlist','financeData','suppliers'];
+  const keys = ['plantSpecies','plantDefs','plantings','rotationPlan','rotationNotes','rotationDelivery','rotationClearance','orderOverrides','settings','tasks','inventory','procurements','wishlist','financeData','suppliers','fieldOps'];
   const data = { _version: 1, _exported: new Date().toISOString(), _farm: settings.farmName || 'שלושה ברושים ירוקים-ראשי' };
   keys.forEach(k => { try { data[k] = JSON.parse(localStorage.getItem(k) || 'null'); } catch(e){} });
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
@@ -4987,7 +5705,7 @@ function importAllData(input) {
       const data = JSON.parse(e.target.result);
       if (!data._version) { showToast('קובץ לא תקין','err'); return; }
       if (!confirm('ייבוא יחליף את כל הנתונים הקיימים. להמשיך?')) return;
-      const keys = ['plantSpecies','plantDefs','plantings','rotationPlan','rotationNotes','rotationDelivery','rotationClearance','orderOverrides','settings','tasks','inventory','procurements','wishlist','financeData','suppliers'];
+      const keys = ['plantSpecies','plantDefs','plantings','rotationPlan','rotationNotes','rotationDelivery','rotationClearance','orderOverrides','settings','tasks','inventory','procurements','wishlist','financeData','suppliers','fieldOps'];
       keys.forEach(k => { if (data[k] !== undefined && data[k] !== null) localStorage.setItem(k, JSON.stringify(data[k])); });
       document.getElementById('backup-info').textContent = '✓ יובא מ: ' + (data._farm||'') + ' · ' + (data._exported ? new Date(data._exported).toLocaleString('he-IL') : '');
       showToast('✓ נתונים יובאו — טוען מחדש...');
@@ -5077,7 +5795,7 @@ function syncToSheets() {
     method: 'POST',
     body: JSON.stringify({
       action: 'syncData',
-      data: { plantings, tasks, plantSpecies, plantDefs, settings, procurements: procurements, financeData, inventory, suppliers }
+      data: { plantings, tasks, plantSpecies, plantDefs, settings, procurements: procurements, financeData, inventory, suppliers, fieldOps }
     })
   }).catch(e => console.log('Sync error:', e));
 }
@@ -5104,6 +5822,16 @@ function renderAutocomplete() {
   document.getElementById('variety-list').innerHTML=varieties.map(v=>`<option value="${escAttr(v)}">`).join('');
   document.getElementById('variety-list-2').innerHTML=varieties.map(v=>`<option value="${escAttr(v)}">`).join('');
   document.getElementById('season-list').innerHTML=allSeasons.map(n=>`<option value="${escAttr(n)}">`).join('');
+  const seedVars = [...new Set(plantings.map(p=>p.seedVariety).filter(Boolean))];
+  const sprayMats= [...new Set(plantings.map(p=>p.sprayMaterial).filter(Boolean))];
+  const sprayTgts= [...new Set(plantings.map(p=>p.sprayTarget).filter(Boolean))];
+  const sprayBys = [...new Set(plantings.map(p=>p.sprayBy).filter(Boolean))];
+  const fill = (id, arr) => { const el=document.getElementById(id);
+    if (el) el.innerHTML = arr.map(v=>`<option value="${escAttr(v)}">`).join(''); };
+  fill('variety-list-3', [...new Set([...seedVars, ...varieties])]);
+  fill('spray-material-list', sprayMats);
+  fill('spray-target-list',   sprayTgts);
+  fill('spray-by-list',       sprayBys);
 }
 
 function showToast(msg,type='') {
