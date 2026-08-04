@@ -1231,6 +1231,7 @@
     </p>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-primary" onclick="exportAllData()" style="background:#7c3aed;border-color:#7c3aed">📥 ייצוא גיבוי</button>
+      <button class="btn btn-outline btn-sm" onclick="importFromSheets()">📥 ייבוא מGoogle Sheets</button>
       <button class="btn btn-outline" onclick="exportCatalogCSV()" style="border-color:#0369a1;color:#0369a1">📊 ייצוא קטלוג CSV</button>
       <button class="btn btn-outline" onclick="exportCatalogToSheets()" style="border-color:#16a34a;color:#16a34a">🌿 שלח קטלוג ל-Sheets</button>
       <label class="btn btn-outline" style="cursor:pointer;border-color:#7c3aed;color:#7c3aed">
@@ -5582,7 +5583,32 @@ function exportAllData() {
   a.click();
   document.getElementById('backup-info').textContent = '✓ גיבוי יוצא בהצלחה — ' + new Date().toLocaleString('he-IL');
 }
-
+function importFromSheets() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'application/json';
+  input.onchange = (e) => {
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target.result);
+        Object.assign(plantings, data.plantings || []);
+        Object.assign(tasks, data.tasks || []);
+        Object.assign(plantDefs, data.plantDefs || []);
+        Object.assign(plantSpecies, data.plantSpecies || []);
+        Object.assign(procurements, data.procurements || []);
+        save();
+        showToast('נתונים יובאו בהצלחה');
+        location.reload();
+      } catch (err) {
+        showToast('שגיאה בייבוא','err');
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
 function exportCatalogCSV() {
   var defs = JSON.parse(localStorage.getItem('plantDefs') || '[]');
   if (!defs.length) { alert('אין נתוני קטלוג לייצוא'); return; }
