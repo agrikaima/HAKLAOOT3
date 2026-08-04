@@ -2310,6 +2310,18 @@ function renderFinance() {
       </label>
     </div>`;
   }
+  // עדכן financeData
+  if (season && totalCost >= 0) {
+    const vat = vatChecked ? totalCost * 0.18 : 0;
+    const totalWithVat = totalCost + vat;
+    financeData[season] = {
+      totalCost: totalCost,
+      vat: vatChecked ? 18 : 0,
+      vatAmount: vat,
+      total: totalWithVat
+    };
+    save();
+  }
   el.innerHTML = html;
 
   financeData[season] = {
@@ -2329,6 +2341,7 @@ function updateSpeciesPrice(name, val) {
   sp.price = parseFloat(val) || 0;
   localStorage.setItem('plantSpecies', JSON.stringify(plantSpecies));
   save();
+ renderFinance(); 
 }
 function updateSpeciesUnitPrice(name, val) {
   const sp = plantSpecies.find(s => s.name === name);
@@ -2336,6 +2349,7 @@ function updateSpeciesUnitPrice(name, val) {
   sp.unitPrice = val ? parseFloat(val) : 0;
   localStorage.setItem('plantSpecies', JSON.stringify(plantSpecies));
   save();
+  renderFinance();
 }
 function normSeason(s) {
   return (s||'').trim()
@@ -5786,9 +5800,19 @@ function clearData() {
 // ── Helpers ───────────────────────────────────
 function save() { 
   localStorage.setItem('plantings',JSON.stringify(plantings)); 
+  syncToSheets(); 
 }
 
-
+function syncToSheets() {
+  if (!settings.scriptUrl) return;
+  fetch(settings.scriptUrl, {
+    method: 'POST',
+    body: JSON.stringify({
+      action: 'syncData',
+      data: { plantings, tasks, plantSpecies, plantDefs, settings, procurements: procurements, financeData, inventory, suppliers, fieldOps }
+    })
+  }).catch(e => console.log('Sync error:', e));
+}
 function formatDate(d) { if(!d)return'';const[y,m,day]=d.split('-');return`${day}/${m}/${y}`; }
 function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function escAttr(s) { return escHtml(s); }
