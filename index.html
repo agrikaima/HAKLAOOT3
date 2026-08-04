@@ -5786,19 +5786,9 @@ function clearData() {
 // ── Helpers ───────────────────────────────────
 function save() { 
   localStorage.setItem('plantings',JSON.stringify(plantings)); 
-  syncToSheets(); 
 }
 
-function syncToSheets() {
-  if (!settings.scriptUrl) return;
-  fetch(settings.scriptUrl, {
-    method: 'POST',
-    body: JSON.stringify({
-      action: 'syncData',
-      data: { plantings, tasks, plantSpecies, plantDefs, settings, procurements: procurements, financeData, inventory, suppliers, fieldOps }
-    })
-  }).catch(e => console.log('Sync error:', e));
-}
+
 function formatDate(d) { if(!d)return'';const[y,m,day]=d.split('-');return`${day}/${m}/${y}`; }
 function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function escAttr(s) { return escHtml(s); }
