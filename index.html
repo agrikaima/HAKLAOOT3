@@ -2310,20 +2310,7 @@ function renderFinance() {
       </label>
     </div>`;
   }
-  // עדכן financeData
-  if (season && totalCost >= 0) {
-    const vat = vatChecked ? totalCost * 0.18 : 0;
-    const totalWithVat = totalCost + vat;
-    financeData[season] = {
-      totalCost: totalCost,
-      vat: vatChecked ? 18 : 0,
-      vatAmount: vat,
-      total: totalWithVat
-    };
-    save();
-  }
-  el.innerHTML = html;
-
+  
   financeData[season] = {
     season,
     totalCost: Math.round(totalCost),
