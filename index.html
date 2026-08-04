@@ -2310,7 +2310,8 @@ function renderFinance() {
       </label>
     </div>`;
   }
-  
+  el.innerHTML = html;
+
   financeData[season] = {
     season,
     totalCost: Math.round(totalCost),
@@ -2328,7 +2329,6 @@ function updateSpeciesPrice(name, val) {
   sp.price = parseFloat(val) || 0;
   localStorage.setItem('plantSpecies', JSON.stringify(plantSpecies));
   save();
- renderFinance(); 
 }
 function updateSpeciesUnitPrice(name, val) {
   const sp = plantSpecies.find(s => s.name === name);
@@ -2336,7 +2336,6 @@ function updateSpeciesUnitPrice(name, val) {
   sp.unitPrice = val ? parseFloat(val) : 0;
   localStorage.setItem('plantSpecies', JSON.stringify(plantSpecies));
   save();
-  renderFinance();
 }
 function normSeason(s) {
   return (s||'').trim()
