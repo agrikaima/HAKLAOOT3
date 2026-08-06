@@ -1556,6 +1556,10 @@ let settings       = JSON.parse(localStorage.getItem('settings')       || '{}');
 let activeFilter   = '';
 if (!settings.fields)   settings.fields   = [];
 if (!settings.procCats) settings.procCats = ['השקייה','גרעיני חמניה','כללי'];
+if (!settings.scriptUrl) {
+  settings.scriptUrl = 'https://script.google.com/macros/s/AKfycbwDBwYvEtqm71Jt8vhsC78EYvhO2ChYYvWQYTVJir51XJv0xRlThiV9AYYS88mnPxqT7w/exec';
+  localStorage.setItem('settings', JSON.stringify(settings));
+}
 
 // ── הגדרות חלקות קבועות ─────────────────────────
 const FIELD_DEFS = [
