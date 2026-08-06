@@ -722,8 +722,98 @@
     <div id="wishlistList"></div>
   </div>
 
+  <!-- ── קטלוג מוצרים ── -->
+  <div class="card" style="padding:0;overflow:hidden;border:1.5px solid #6ee7b7">
+    <div onclick="toggleCatalogPanel()" style="cursor:pointer;padding:12px 14px;background:#ecfdf5;display:flex;justify-content:space-between;align-items:center;gap:8px">
+      <span style="font-weight:700;color:#065f46;font-size:.92rem">
+        📖 קטלוג מוצרים <span id="catalogCount" style="background:#a7f3d0;color:#065f46;border-radius:10px;padding:0 7px;font-size:.72rem;margin-right:4px"></span>
+      </span>
+      <span id="catalogToggle" style="font-size:.8rem;color:#065f46;font-weight:600">▼ פתח</span>
+    </div>
+    <div id="catalogBody" style="display:none;padding:14px">
+
+      <div class="fg g2">
+        <div>
+          <label>שם מוצר</label>
+          <input type="text" id="cat-name" placeholder="טפטפת ויסות 2 ל/ש...">
+        </div>
+        <div>
+          <label>מק״ט</label>
+          <input type="text" id="cat-sku" placeholder="מספר קטלוגי" dir="ltr">
+        </div>
+      </div>
+      <div class="fg g2">
+        <div>
+          <label>יצרן</label>
+          <input type="text" id="cat-maker" placeholder="נטפים, פלסטרו..." list="cat-maker-list">
+          <datalist id="cat-maker-list"></datalist>
+        </div>
+        <div>
+          <label>ספק</label>
+          <input type="text" id="cat-supplier" placeholder="ממי קונים" list="p-supplier-list">
+        </div>
+      </div>
+      <div class="fg g3">
+        <div>
+          <label>קטגוריה</label>
+          <select id="cat-cat"></select>
+        </div>
+        <div>
+          <label>יחידה</label>
+          <input type="text" id="cat-unit" placeholder='יח׳, מ׳, ק"ג'>
+        </div>
+        <div>
+          <label>מחיר מחירון (₪)</label>
+          <input type="number" id="cat-price" placeholder="0" min="0" step="0.01">
+        </div>
+      </div>
+      <div class="fg">
+        <label>קישור לדף המוצר (רשות)</label>
+        <input type="url" id="cat-link" placeholder="https://..." dir="ltr">
+      </div>
+      <div class="fg">
+        <label>מפרט / הערות</label>
+        <textarea id="cat-notes" placeholder="מידות, דגם, תיאור מהקטלוג..." style="min-height:50px"></textarea>
+      </div>
+      <div class="fg">
+        <label>📷 תמונה (הדבק Ctrl+V, גרור, או לחץ)</label>
+        <div id="cat-img-drop" class="img-upload-area" onclick="document.getElementById('cat-img-input').click()"
+             style="position:relative" ondragover="event.preventDefault()" ondrop="catHandleDrop(event)">
+          <input type="file" id="cat-img-input" accept="image/*" style="display:none" onchange="catHandleFile(event)">
+          <div id="cat-img-hint">לחץ / גרור / הדבק תמונה</div>
+          <img id="cat-img-preview" class="img-preview" style="display:none">
+          <button id="cat-img-clear" onclick="event.stopPropagation();catClearImg()" style="display:none;position:absolute;top:4px;left:4px;font-size:.7rem;padding:2px 7px;border:1px solid #d1d5db;border-radius:8px;background:#fff;cursor:pointer">✕ הסר</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" id="cat-save-btn" onclick="saveCatalogItem()" style="flex:1;background:#059669;border-color:#059669">שמור בקטלוג</button>
+        <button class="btn btn-outline" onclick="clearCatalogForm()" style="width:auto;padding:12px 14px">ביטול</button>
+      </div>
+      <input type="hidden" id="cat-edit-id">
+
+      <div class="search-wrap" style="margin-top:12px">
+        <input type="text" id="catalogSearch" placeholder="חפש בקטלוג — שם, יצרן, מק״ט..." oninput="renderCatalog()">
+      </div>
+      <div class="filter-row" id="catalogFilterRow"></div>
+      <div id="catalogList"></div>
+      <button class="btn btn-outline btn-sm" onclick="exportCatalogItemsToSheets()" style="margin-top:8px;border-color:#059669;color:#059669">שלח קטלוג ל-Sheets</button>
+    </div>
+  </div>
+
   <div class="card">
     <div class="section-label">פריט רכש חדש</div>
+
+    <!-- בחירה מהקטלוג -->
+    <div style="background:#ecfdf5;border:1.5px solid #6ee7b7;border-radius:10px;padding:10px 12px;margin-bottom:12px">
+      <label style="color:#065f46">📖 בחר מהקטלוג <span style="font-weight:400;color:#047857;font-size:.78rem">(ימלא את הפרטים אוטומטית)</span></label>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <input type="text" id="p-catalog-pick" placeholder="חפש לפי שם, יצרן או מק״ט..." list="p-catalog-list"
+               oninput="pickFromCatalog(this.value)" style="flex:1;min-width:150px">
+        <datalist id="p-catalog-list"></datalist>
+        <button onclick="clearCatalogPick()" style="flex-shrink:0;padding:8px 12px;border:1px solid #a7f3d0;border-radius:8px;background:#fff;color:#047857;cursor:pointer;font-family:inherit;font-size:.8rem">נקה</button>
+      </div>
+      <div id="p-catalog-info" style="display:none;margin-top:7px;font-size:.8rem;line-height:1.7"></div>
+    </div>
     <div class="fg g2">
       <div>
         <label>קטגוריה</label>
@@ -773,6 +863,7 @@
         <img id="p-img-preview" class="img-preview" style="display:none">
       </div>
     </div>
+    <input type="hidden" id="p-catalog-id">
     <button class="btn btn-primary" onclick="saveProcurement()">שמור פריט</button>
     <canvas id="img-canvas" style="display:none"></canvas>
   </div>
@@ -1263,6 +1354,12 @@
     </div>
   </div>
 
+  <div class="card" style="border-color:#c7d2fe;background:#f8fafc">
+    <div class="section-label">💽 תפוסת אחסון</div>
+    <div id="storageInfo" style="font-size:.82rem;color:var(--muted);line-height:1.8;white-space:pre-line"></div>
+    <button class="btn btn-outline btn-sm" onclick="renderStorageInfo()" style="margin-top:8px">רענן</button>
+  </div>
+
   <div class="card">
     <div class="section-label">🚜 סוגי עבודה (שיגרת שדה)</div>
     <p style="font-size:.82rem;color:var(--muted);margin-bottom:10px">סוגי העיבודים והעבודות שיופיעו בשיגרת שדה</p>
@@ -1566,6 +1663,9 @@ document.addEventListener('DOMContentLoaded', () => {
   renderFieldOps();
   renderOpDatalists();
   toggleOpsPanel(localStorage.getItem('opsPanelOpen') === '1');
+  renderCatCatSelect();
+  renderCatalogDatalists();
+  toggleCatalogPanel(localStorage.getItem('catalogPanelOpen') === '1');
 
   // חזרה ללשונית שבה היית לפני הרענון
   try {
@@ -1601,12 +1701,12 @@ function switchTab(tab, el) {
   try { localStorage.setItem('activeTab', tab); } catch(e) {}
   if (tab === 'beds')        { renderList(); renderFieldOps(); }
   if (tab === 'tasks')       renderTasksList();
-  if (tab === 'procurement') { renderProcCatSelect(); renderProcList(); renderProcSupplierList(); renderWishlist(); renderSuppliersList(); }
+  if (tab === 'procurement') { renderProcCatSelect(); renderProcList(); renderProcSupplierList(); renderWishlist(); renderSuppliersList(); renderCatalog(); }
   if (tab === 'inventory')   { renderInvCatSelect(); renderInventory(); renderInvDatalists(); }
   if (tab === 'orders')      { renderOrderFieldSelect(); renderCalcFieldSelect(); renderSpeciesSelect(); renderSpeciesList(); renderOrderSeasonFilter(); renderOrderTable(); }
   if (tab === 'rotation')    { renderRotationSeasons(); renderRotation(); }
   if (tab === 'finance')     { renderFinance(); }
-  if (tab === 'settings')    { renderFieldDefsList(); renderFieldsList(); renderProcCatList(); renderInvCatList(); renderOpTypeList(); }
+  if (tab === 'settings')    { renderFieldDefsList(); renderFieldsList(); renderProcCatList(); renderInvCatList(); renderOpTypeList(); renderStorageInfo(); }
 }
 
 // ── Record type toggle ─────────────────────────
@@ -4200,7 +4300,7 @@ function fixOldRowsFormat() {
 }
 
 function exportAppData() {
-  var keys = ['plantDefs','plantSpecies','plantings','rotationPlan','rotationNotes','rotationDelivery','rotationClearance','fieldDefs','settings','cropGroups','fields','procCats','inventory','procurements','wishlist','financeData','suppliers','fieldOps'];
+  var keys = ['plantDefs','plantSpecies','plantings','rotationPlan','rotationNotes','rotationDelivery','rotationClearance','fieldDefs','settings','cropGroups','fields','procCats','inventory','procurements','wishlist','financeData','suppliers','fieldOps','catalog'];
   var data = { _version: 1, _date: new Date().toISOString() };
   keys.forEach(function(k) {
     var v = localStorage.getItem(k);
@@ -4223,7 +4323,7 @@ function importAppData(input) {
       var data = JSON.parse(e.target.result);
       if (!data._version) { showToast('קובץ לא תקין','err'); return; }
       if (!confirm('⚠️ זה ידרוס את כל הנתונים הנוכחיים. להמשיך?')) return;
-      var keys = ['plantDefs','plantSpecies','plantings','rotationPlan','rotationNotes','rotationDelivery','rotationClearance','fieldDefs','settings','cropGroups','fields','procCats','inventory','procurements','wishlist','financeData','suppliers','fieldOps'];
+      var keys = ['plantDefs','plantSpecies','plantings','rotationPlan','rotationNotes','rotationDelivery','rotationClearance','fieldDefs','settings','cropGroups','fields','procCats','inventory','procurements','wishlist','financeData','suppliers','fieldOps','catalog'];
       keys.forEach(function(k) {
         if (data[k] !== undefined) localStorage.setItem(k, JSON.stringify(data[k]));
       });
@@ -4348,30 +4448,83 @@ let pendingProcImg = null;
 function previewProcImg(e) {
   const file = e.target.files[0];
   if (!file) return;
-  compressImage(file, 800, 0.75, (dataUrl) => {
+  const origKB = _fmtKB(file.size);
+  compressImage(file, 900, 0.75, (dataUrl, info) => {
     pendingProcImg = dataUrl;
     const preview = document.getElementById('p-img-preview');
     preview.src = dataUrl;
     preview.style.display = 'block';
-    document.getElementById('p-img-hint').textContent = '✓ תמונה נטענה (לחץ להחלפה)';
+    document.getElementById('p-img-hint').textContent =
+      '✓ תמונה נטענה — ' + origKB + ' ← ' + _fmtKB(info.bytes) + ' (לחץ להחלפה)';
   });
 }
 
+// ── דחיסת תמונות ──────────────────────────────
+// יעד: כל תמונה מתחת ל-~120KB, כדי שהאחסון בדפדפן לא יתמלא.
+// (localStorage מוגבל ל-~5MB בסך הכל — תמונה גדולה אחת יכולה לתפוס רבע מזה)
+const IMG_TARGET_BYTES = 120 * 1024;
+
 function compressImage(file, maxWidth, quality, callback) {
+  if (!file || !file.type || !file.type.startsWith('image/')) {
+    showToast('הקובץ אינו תמונה','err');
+    return;
+  }
   const reader = new FileReader();
+  reader.onerror = () => showToast('שגיאה בקריאת התמונה','err');
   reader.onload = (e) => {
     const img = new Image();
+    img.onerror = () => showToast('לא ניתן לפתוח את התמונה','err');
     img.onload = () => {
-      const canvas = document.getElementById('img-canvas');
-      let w = img.width, h = img.height;
-      if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
-      canvas.width = w; canvas.height = h;
-      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      callback(canvas.toDataURL('image/jpeg', quality));
+      try {
+        const canvas = document.getElementById('img-canvas') || document.createElement('canvas');
+        // מקטין לפי הצלע הארוכה — עובד גם לתמונות לאורך וגם לרוחב
+        let w = img.width, h = img.height;
+        const longest = Math.max(w, h);
+        if (longest > maxWidth) {
+          const scale = maxWidth / longest;
+          w = Math.round(w * scale);
+          h = Math.round(h * scale);
+        }
+
+        const render = (cw, ch, q) => {
+          canvas.width = cw; canvas.height = ch;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(0, 0, cw, ch);          // רקע לבן לתמונות שקופות (PNG)
+          ctx.drawImage(img, 0, 0, cw, ch);
+          return canvas.toDataURL('image/jpeg', q);
+        };
+
+        let q = quality;
+        let out = render(w, h, q);
+        // הורדת איכות בהדרגה עד שנכנסים ליעד
+        while (out.length > IMG_TARGET_BYTES * 1.37 && q > 0.35) {
+          q -= 0.1;
+          out = render(w, h, q);
+        }
+        // אם עדיין גדול — מקטינים גם את המידות
+        let guard = 0;
+        while (out.length > IMG_TARGET_BYTES * 1.37 && Math.max(w, h) > 320 && guard < 6) {
+          w = Math.round(w * 0.8); h = Math.round(h * 0.8);
+          out = render(w, h, q);
+          guard++;
+        }
+
+        callback(out, { width: w, height: h, bytes: Math.round(out.length * 0.75) });
+      } catch (err) {
+        console.error('compressImage:', err);
+        showToast('שגיאה בעיבוד התמונה','err');
+      }
     };
     img.src = e.target.result;
   };
   reader.readAsDataURL(file);
+}
+
+function _fmtKB(bytes) {
+  return bytes > 1024*1024
+    ? (bytes/1024/1024).toFixed(1) + 'MB'
+    : Math.round(bytes/1024) + 'KB';
 }
 
 function openLightbox(src) {
@@ -4393,7 +4546,8 @@ async function saveProcurement() {
   const notes    = document.getElementById('p-notes').value.trim();
   if (!cat)  { showToast('נא לבחור קטגוריה','err'); return; }
   if (!item) { showToast('נא להזין שם פריט','err'); return; }
-  const rec = { id: Date.now(), cat, date, item, qty, unit, price, supplier, notes, img: pendingProcImg||null, synced: false };
+  const catalogId = parseInt(document.getElementById('p-catalog-id')?.value) || null;
+  const rec = { id: Date.now(), cat, date, item, qty, unit, price, supplier, notes, img: pendingProcImg||null, catalogId, synced: false };
   procurements.unshift(rec);
   saveProc();
   sendToSheets({ _type: 'procurement', ...rec, img: rec.img ? '[תמונה מצורפת]' : '' });
@@ -4403,6 +4557,7 @@ async function saveProcurement() {
   document.getElementById('p-img-hint').textContent='לחץ לצילום / בחר תמונה';
   document.getElementById('p-img-input').value='';
   pendingProcImg = null;
+  clearCatalogPick();
   renderProcList();
   renderProcItems();
   renderProcSupplierList();
@@ -4445,6 +4600,13 @@ function renderProcList() {
       })()}
       ${p.img?`<img src="${p.img}" class="proc-img" onclick="openLightbox('${p.img}')" alt="תמונת פריט">`:''}
       <div class="rec-actions">
+        ${(function(){
+          const c = catalog.find(x => x.id === p.catalogId || (x.name||'').trim() === (p.item||'').trim());
+          return c
+            ? `<button class="btn-ghost" onclick="editCatalogItem(${c.id})" style="color:#059669">📖 בקטלוג</button>`
+            : `<button class="btn-ghost" onclick="addProcToCatalog(${p.id})" style="color:#059669">📖 הוסף לקטלוג</button>`;
+        })()}
+        ${p.img?`<button class="btn-ghost" onclick="removeProcImg(${p.id})">🖼 הסר תמונה</button>`:''}
         <button class="btn-ghost del" onclick="deleteProc(${p.id})">🗑 מחק</button>
       </div>
     </div>`).join('');
@@ -4456,7 +4618,64 @@ function deleteProc(id) {
   saveProc(); renderProcList(); showToast('נמחק');
 }
 
-function saveProc() { localStorage.setItem('procurements', JSON.stringify(procurements)); }
+function saveProc() { return _safeStore('procurements', procurements); }
+
+// כתיבה בטוחה ל-localStorage — מזהה כשהאחסון מתמלא ומסבירה מה לעשות
+function _safeStore(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+    return true;
+  } catch (err) {
+    const quota = err && (err.name === 'QuotaExceededError' ||
+      err.name === 'NS_ERROR_DOM_QUOTA_REACHED' || err.code === 22);
+    if (quota) {
+      showToast('⚠️ האחסון בדפדפן מלא — ראה הודעה','err');
+      alert('האחסון בדפדפן התמלא.\n\n' + storageReport() +
+        '\n\nמה לעשות:\n' +
+        '1. גבי קובץ JSON (הגדרות ← ייצוא גיבוי)\n' +
+        '2. מחקי תמונות מפריטי רכש ישנים — הן תופסות הכי הרבה מקום\n' +
+        '3. נסי לשמור שוב');
+    } else {
+      console.error('storage error:', err);
+      showToast('שגיאה בשמירה','err');
+    }
+    return false;
+  }
+}
+
+// דוח תפוסת אחסון
+function storageReport() {
+  let total = 0;
+  const parts = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    const v = localStorage.getItem(k) || '';
+    const b = v.length * 2;                 // UTF-16
+    total += b;
+    parts.push([k, b]);
+  }
+  parts.sort((a,b) => b[1] - a[1]);
+  const top = parts.slice(0,4).map(x => '  • ' + x[0] + ': ' + _fmtKB(x[1])).join('\n');
+  return 'בשימוש: ' + _fmtKB(total) + ' (מגבלה ~5MB)\n\nהכי גדולים:\n' + top;
+}
+
+// מספר תמונות ומשקלן ברכש
+function procImageStats() {
+  const withImg = procurements.filter(p => p.img);
+  const bytes = withImg.reduce((s,p) => s + (p.img.length * 0.75), 0);
+  return { count: withImg.length, bytes: Math.round(bytes) };
+}
+
+// מחיקת תמונה מפריט רכש (בלי למחוק את הפריט)
+function removeProcImg(id) {
+  const p = procurements.find(x => x.id === id);
+  if (!p || !p.img) return;
+  if (!confirm('למחוק את התמונה מ"' + p.item + '"?\nהפריט עצמו יישאר.')) return;
+  delete p.img;
+  saveProc();
+  renderProcList();
+  showToast('✓ התמונה נמחקה');
+}
 
 function _safeScroll(id) {
   const el = document.getElementById(id);
@@ -4800,6 +5019,372 @@ function removeOpType(i) {
   saveSettings(false);
   renderOpTypeSelect();
   renderOpTypeList();
+}
+
+function renderStorageInfo() {
+  const el = document.getElementById('storageInfo');
+  if (!el) return;
+  const st = procImageStats();
+  el.textContent = storageReport() +
+    '\n\nתמונות ברכש: ' + st.count + ' (' + _fmtKB(st.bytes) + ')';
+}
+
+// ── קטלוג מוצרים (Product Catalog) ────────────────────────────────
+let catalog = JSON.parse(localStorage.getItem('catalog') || '[]');
+let pendingCatImg = null;
+let catalogFilter = '';
+
+function saveCatalogStore() {
+  const ok = _safeStore('catalog', catalog);
+  if (ok) syncToSheets();
+  return ok;
+}
+
+function toggleCatalogPanel(force) {
+  const body = document.getElementById('catalogBody');
+  const tog  = document.getElementById('catalogToggle');
+  if (!body) return;
+  const open = force !== undefined ? force : body.style.display === 'none';
+  body.style.display = open ? 'block' : 'none';
+  if (tog) tog.textContent = open ? '▲ סגור' : '▼ פתח';
+  try { localStorage.setItem('catalogPanelOpen', open ? '1' : '0'); } catch(e) {}
+  if (open) renderCatalog();
+}
+
+function renderCatCatSelect() {
+  const sel = document.getElementById('cat-cat');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— בחר —</option>' +
+    settings.procCats.map(c => `<option value="${escAttr(c)}"${c===cur?' selected':''}>${escHtml(c)}</option>`).join('');
+}
+
+function renderCatalogDatalists() {
+  const makers = [...new Set(catalog.map(c=>c.maker).filter(Boolean))];
+  const m = document.getElementById('cat-maker-list');
+  if (m) m.innerHTML = makers.map(v=>`<option value="${escAttr(v)}">`).join('');
+  // רשימת הבחירה בטופס הרכש — שם · יצרן · מק״ט
+  const pick = document.getElementById('p-catalog-list');
+  if (pick) pick.innerHTML = catalog.map(c => `<option value="${escAttr(catalogLabel(c))}">`).join('');
+}
+
+function catalogLabel(c) {
+  return [c.name, c.maker, c.sku].filter(Boolean).join(' · ');
+}
+
+// ── תמונה ──
+function catHandleFile(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const origKB = _fmtKB(file.size);
+  compressImage(file, 700, 0.72, function(dataUrl, info) {
+    catSetImg(dataUrl);
+    document.getElementById('cat-img-hint').textContent = '✓ ' + origKB + ' ← ' + _fmtKB(info.bytes);
+  });
+}
+function catHandleDrop(e) {
+  e.preventDefault();
+  const file = e.dataTransfer.files[0];
+  if (!file || !file.type.startsWith('image/')) return;
+  compressImage(file, 700, 0.72, function(dataUrl) { catSetImg(dataUrl); });
+}
+function catSetImg(dataUrl) {
+  pendingCatImg = dataUrl;
+  const p = document.getElementById('cat-img-preview');
+  p.src = dataUrl; p.style.display = 'block';
+  document.getElementById('cat-img-hint').style.display = 'none';
+  document.getElementById('cat-img-clear').style.display = 'block';
+}
+function catClearImg() {
+  pendingCatImg = null;
+  document.getElementById('cat-img-preview').style.display = 'none';
+  const hint = document.getElementById('cat-img-hint');
+  hint.style.display = 'block';
+  hint.textContent = 'לחץ / גרור / הדבק תמונה';
+  document.getElementById('cat-img-clear').style.display = 'none';
+  document.getElementById('cat-img-input').value = '';
+}
+
+// ── שמירה ──
+function saveCatalogItem() {
+  const name = document.getElementById('cat-name').value.trim();
+  if (!name) { showToast('נא להזין שם מוצר','err'); return; }
+  const editId = document.getElementById('cat-edit-id').value;
+  const sku = document.getElementById('cat-sku').value.trim();
+
+  // אזהרה על כפילות מק״ט
+  if (sku) {
+    const dup = catalog.find(c => c.sku && c.sku.trim() === sku && String(c.id) !== String(editId));
+    if (dup && !confirm('מק״ט ' + sku + ' כבר קיים ("' + dup.name + '").\nלהוסיף בכל זאת?')) return;
+  }
+
+  const item = {
+    id:       editId ? parseInt(editId) : Date.now(),
+    name, sku,
+    maker:    document.getElementById('cat-maker').value.trim(),
+    supplier: document.getElementById('cat-supplier').value.trim(),
+    cat:      document.getElementById('cat-cat').value,
+    unit:     document.getElementById('cat-unit').value.trim(),
+    price:    parseFloat(document.getElementById('cat-price').value) || 0,
+    link:     document.getElementById('cat-link').value.trim(),
+    notes:    document.getElementById('cat-notes').value.trim(),
+    img:      pendingCatImg || null,
+    updatedAt: new Date().toISOString()
+  };
+
+  if (editId) {
+    const i = catalog.findIndex(c => c.id === item.id);
+    if (i >= 0) { if (!item.img && catalog[i].img) item.img = catalog[i].img; catalog[i] = item; }
+  } else {
+    catalog.unshift(item);
+  }
+
+  if (!saveCatalogStore()) return;
+  clearCatalogForm();
+  renderCatalog();
+  renderCatalogDatalists();
+  showToast('✓ נשמר בקטלוג');
+}
+
+function clearCatalogForm() {
+  ['cat-name','cat-sku','cat-maker','cat-supplier','cat-unit','cat-price','cat-link','cat-notes']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  document.getElementById('cat-cat').value = '';
+  document.getElementById('cat-edit-id').value = '';
+  document.getElementById('cat-save-btn').textContent = 'שמור בקטלוג';
+  catClearImg();
+}
+
+function editCatalogItem(id) {
+  const c = catalog.find(x => x.id === id);
+  if (!c) return;
+  renderCatCatSelect();
+  document.getElementById('cat-name').value     = c.name || '';
+  document.getElementById('cat-sku').value      = c.sku || '';
+  document.getElementById('cat-maker').value    = c.maker || '';
+  document.getElementById('cat-supplier').value = c.supplier || '';
+  document.getElementById('cat-cat').value      = c.cat || '';
+  document.getElementById('cat-unit').value     = c.unit || '';
+  document.getElementById('cat-price').value    = c.price || '';
+  document.getElementById('cat-link').value     = c.link || '';
+  document.getElementById('cat-notes').value    = c.notes || '';
+  document.getElementById('cat-edit-id').value  = c.id;
+  document.getElementById('cat-save-btn').textContent = 'עדכן בקטלוג';
+  if (c.img) catSetImg(c.img); else catClearImg();
+  toggleCatalogPanel(true);
+  _safeScroll('cat-name');
+}
+
+function deleteCatalogItem(id) {
+  const c = catalog.find(x => x.id === id);
+  if (!c) return;
+  if (!confirm('למחוק את "' + c.name + '" מהקטלוג?\nרשומות הרכש הקיימות לא יימחקו.')) return;
+  catalog = catalog.filter(x => x.id !== id);
+  saveCatalogStore();
+  renderCatalog();
+  renderCatalogDatalists();
+  showToast('נמחק');
+}
+
+function removeCatalogImg(id) {
+  const c = catalog.find(x => x.id === id);
+  if (!c || !c.img) return;
+  if (!confirm('למחוק את התמונה של "' + c.name + '"?')) return;
+  delete c.img;
+  saveCatalogStore();
+  renderCatalog();
+  showToast('✓ התמונה נמחקה');
+}
+
+// ── היסטוריית רכישות של פריט קטלוג ──
+function catalogPurchases(c) {
+  const key = (c.name || '').trim();
+  return procurements.filter(p =>
+    (p.catalogId && p.catalogId === c.id) || (p.item || '').trim() === key);
+}
+
+function catalogLastPrice(c) {
+  const buys = catalogPurchases(c).filter(p => p.price).sort((a,b) => (b.date||'').localeCompare(a.date||''));
+  return buys.length ? { price: parseFloat(buys[0].price), date: buys[0].date } : null;
+}
+
+// ── מילוי אוטומטי מהקטלוג לטופס הרכש ──
+function findCatalogByLabel(val) {
+  if (!val) return null;
+  const v = val.trim();
+  return catalog.find(c => catalogLabel(c) === v)
+      || catalog.find(c => (c.name||'').trim() === v)
+      || catalog.find(c => c.sku && c.sku.trim() === v)
+      || null;
+}
+
+function pickFromCatalog(val) {
+  const info = document.getElementById('p-catalog-info');
+  const c = findCatalogByLabel(val);
+  if (!c) { if (info) { info.style.display='none'; info.innerHTML=''; } return; }
+
+  // מילוי השדות
+  const set = (id, v) => { const el = document.getElementById(id); if (el && v !== undefined && v !== null && v !== '') el.value = v; };
+  set('p-item', c.name);
+  set('p-unit', c.unit);
+  if (c.cat && settings.procCats.includes(c.cat)) set('p-cat', c.cat);
+  if (c.supplier) { set('p-supplier', c.supplier); showSupplierInfo(); }
+  const last = catalogLastPrice(c);
+  set('p-price', last ? last.price : (c.price || ''));
+  if (c.img) {
+    pendingProcImg = c.img;
+    const pv = document.getElementById('p-img-preview');
+    if (pv) { pv.src = c.img; pv.style.display = 'block'; }
+    const h = document.getElementById('p-img-hint');
+    if (h) h.textContent = '✓ תמונה מהקטלוג (לחץ להחלפה)';
+  }
+  const hid = document.getElementById('p-catalog-id');
+  if (hid) hid.value = c.id;
+
+  if (info) {
+    const bits = [];
+    if (c.maker) bits.push('🏭 ' + escHtml(c.maker));
+    if (c.sku)   bits.push('🔢 מק״ט ' + escHtml(c.sku));
+    if (c.price) bits.push('📋 מחירון ₪' + c.price);
+    if (last)    bits.push('<span style="color:#b45309">🕐 נקנה לאחרונה ₪' + last.price + ' (' + formatDate(last.date) + ')</span>');
+    if (c.link)  bits.push('<a href="' + escAttr(c.link) + '" target="_blank" rel="noopener" style="color:#1d4ed8">🔗 דף המוצר</a>');
+    info.style.display = 'block';
+    info.innerHTML = '<div style="color:#065f46;font-weight:600">✓ ' + escHtml(c.name) + '</div>'
+      + '<div style="color:#374151">' + bits.join(' · ') + '</div>'
+      + (c.notes ? '<div style="color:#6b7280;font-style:italic;font-size:.76rem">' + escHtml(c.notes) + '</div>' : '');
+  }
+  showToast('✓ הפרטים מולאו מהקטלוג');
+}
+
+function clearCatalogPick() {
+  const el = document.getElementById('p-catalog-pick');
+  if (el) el.value = '';
+  const info = document.getElementById('p-catalog-info');
+  if (info) { info.style.display = 'none'; info.innerHTML = ''; }
+  const hid = document.getElementById('p-catalog-id');
+  if (hid) hid.value = '';
+}
+
+// הוספה מהירה לקטלוג מתוך רשומת רכש קיימת
+function addProcToCatalog(id) {
+  const p = procurements.find(x => x.id === id);
+  if (!p) return;
+  if (catalog.some(c => (c.name||'').trim() === (p.item||'').trim())) {
+    showToast('הפריט כבר קיים בקטלוג','err');
+    return;
+  }
+  clearCatalogForm();
+  document.getElementById('cat-name').value     = p.item || '';
+  document.getElementById('cat-unit').value     = p.unit || '';
+  document.getElementById('cat-price').value    = p.price || '';
+  document.getElementById('cat-supplier').value = p.supplier || '';
+  renderCatCatSelect();
+  document.getElementById('cat-cat').value      = p.cat || '';
+  if (p.img) catSetImg(p.img);
+  toggleCatalogPanel(true);
+  _safeScroll('cat-name');
+  showToast('השלימי יצרן ומק״ט ושמרי');
+}
+
+function setCatalogFilter(val, el) {
+  catalogFilter = val;
+  document.querySelectorAll('#catalogFilterRow .chip').forEach(c => c.classList.remove('active'));
+  if (el) el.classList.add('active');
+  renderCatalog();
+}
+
+function renderCatalog() {
+  renderCatCatSelect();
+  renderCatalogDatalists();
+
+  const badge = document.getElementById('catalogCount');
+  if (badge) badge.textContent = catalog.length || '';
+
+  const el = document.getElementById('catalogList');
+  if (!el) return;
+  const q = (document.getElementById('catalogSearch')?.value || '').toLowerCase();
+
+  // צ'יפים לפי קטגוריה
+  const cats = [...new Set(catalog.map(c=>c.cat).filter(Boolean))];
+  const fr = document.getElementById('catalogFilterRow');
+  if (fr) {
+    fr.innerHTML = `<button class="chip ${catalogFilter===''?'active':''}" onclick="setCatalogFilter('',this)">הכל</button>` +
+      cats.map(c => `<button class="chip ${catalogFilter===c?'active':''}" onclick="setCatalogFilter(${JSON.stringify(c)},this)">${escHtml(c)}</button>`).join('');
+  }
+
+  let list = [...catalog];
+  if (catalogFilter) list = list.filter(c => c.cat === catalogFilter);
+  if (q) list = list.filter(c =>
+    ((c.name||'')+(c.maker||'')+(c.sku||'')+(c.supplier||'')+(c.notes||'')+(c.cat||''))
+      .toLowerCase().includes(q));
+
+  if (!list.length) {
+    el.innerHTML = '<div class="empty" style="padding:22px"><div class="icon">📖</div><p>'
+      + (catalog.length ? 'לא נמצאו מוצרים' : 'הקטלוג ריק — הוסיפי מוצר ראשון למעלה') + '</p></div>';
+    return;
+  }
+
+  el.innerHTML = list.sort((a,b)=>a.name.localeCompare(b.name,'he')).map(c => {
+    const buys = catalogPurchases(c);
+    const last = catalogLastPrice(c);
+    const meta = [
+      c.maker ? '🏭 ' + escHtml(c.maker) : '',
+      c.sku   ? '🔢 ' + escHtml(c.sku) : '',
+      c.unit  ? '📦 ' + escHtml(c.unit) : '',
+      c.supplier ? '🏪 ' + escHtml(c.supplier) : '',
+    ].filter(Boolean).join(' · ');
+    return `
+    <div class="card" style="margin-bottom:8px;padding:11px;border-right:4px solid #059669">
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        ${c.img ? `<img src="${c.img}" onclick="openLightbox('${c.img}')"
+            style="width:64px;height:64px;object-fit:cover;border-radius:8px;cursor:pointer;flex-shrink:0;border:1px solid var(--border)">` : ''}
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:.92rem;color:#065f46">${escHtml(c.name)}</div>
+          ${meta ? `<div style="font-size:.76rem;color:var(--muted);margin-top:2px">${meta}</div>` : ''}
+          <div class="badges" style="margin-top:5px">
+            ${c.price ? `<span class="badge b-gray">מחירון ₪${c.price}</span>` : ''}
+            ${last ? `<span class="badge b-amber">אחרון ₪${last.price} · ${formatDate(last.date)}</span>` : ''}
+            ${buys.length ? `<span class="badge b-green">${buys.length} רכישות</span>` : ''}
+            ${c.link ? `<a href="${escAttr(c.link)}" target="_blank" rel="noopener" class="badge b-blue" style="text-decoration:none">🔗 דף המוצר</a>` : ''}
+          </div>
+          ${c.notes ? `<div class="rec-note">${escHtml(c.notes)}</div>` : ''}
+        </div>
+      </div>
+      <div class="rec-actions">
+        <button class="btn-ghost" onclick="useCatalogItem(${c.id})" style="color:#059669">🛒 קנה מזה</button>
+        ${c.img ? `<button class="btn-ghost" onclick="removeCatalogImg(${c.id})">🖼 הסר תמונה</button>` : ''}
+        <button class="btn-ghost" onclick="editCatalogItem(${c.id})">✏️</button>
+        <button class="btn-ghost del" onclick="deleteCatalogItem(${c.id})">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// "קנה מזה" — ממלא את טופס הרכש מהקטלוג
+function useCatalogItem(id) {
+  const c = catalog.find(x => x.id === id);
+  if (!c) return;
+  const pick = document.getElementById('p-catalog-pick');
+  if (pick) pick.value = catalogLabel(c);
+  pickFromCatalog(catalogLabel(c));
+  toggleCatalogPanel(false);
+  _safeScroll('p-item');
+}
+
+async function exportCatalogItemsToSheets() {
+  if (!settings.scriptUrl) { showToast('הגדר Sheets URL תחילה','err'); return; }
+  const rows = catalog.map(c => {
+    const last = catalogLastPrice(c);
+    return {
+      name: c.name, sku: c.sku || '', maker: c.maker || '', supplier: c.supplier || '',
+      cat: c.cat || '', unit: c.unit || '', price: c.price || '',
+      lastPrice: last ? last.price : '', lastDate: last ? last.date : '',
+      purchases: catalogPurchases(c).length,
+      link: c.link || '', notes: c.notes || '', hasImg: c.img ? 'כן' : ''
+    };
+  });
+  showToast('שולח קטלוג מוצרים...');
+  const ok = await sendToSheets({ _type: 'productcatalog', rows });
+  showToast(ok ? '✓ קטלוג נשלח ל-Sheets' : 'שגיאה בשליחה', ok ? '' : 'err');
 }
 
 // ── ספקים (Suppliers) ─────────────────────────────────────────────
@@ -5370,16 +5955,16 @@ let wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
 let pendingWlImg = null;
 let wlFilter = '';
 
-function saveWishlist() { localStorage.setItem('wishlist', JSON.stringify(wishlist)); }
+function saveWishlist() { return _safeStore('wishlist', wishlist); }
 
 function wlHandleFile(e) {
   const file = e.target.files[0]; if (!file) return;
-  compressImage(file, 900, 0.8, function(dataUrl) { wlSetImg(dataUrl); });
+  compressImage(file, 900, 0.75, function(dataUrl) { wlSetImg(dataUrl); });
 }
 function wlHandleDrop(e) {
   e.preventDefault();
   const file = e.dataTransfer.files[0]; if (!file || !file.type.startsWith('image/')) return;
-  compressImage(file, 900, 0.8, function(dataUrl) { wlSetImg(dataUrl); });
+  compressImage(file, 900, 0.75, function(dataUrl) { wlSetImg(dataUrl); });
 }
 function wlSetImg(dataUrl) {
   pendingWlImg = dataUrl;
@@ -5405,7 +5990,7 @@ document.addEventListener('paste', function(e) {
   for (let i = 0; i < items.length; i++) {
     if (items[i].type.startsWith('image/')) {
       const file = items[i].getAsFile();
-      compressImage(file, 900, 0.8, function(dataUrl) { wlSetImg(dataUrl); });
+      compressImage(file, 900, 0.75, function(dataUrl) { wlSetImg(dataUrl); });
       e.preventDefault(); break;
     }
   }
@@ -5572,7 +6157,7 @@ async function syncAll() {
 
 // ── Settings ──────────────────────────────────
 function exportAllData() {
-  const keys = ['plantSpecies','plantDefs','plantings','rotationPlan','rotationNotes','rotationDelivery','rotationClearance','orderOverrides','settings','tasks','inventory','procurements','wishlist','financeData','suppliers','fieldOps'];
+  const keys = ['plantSpecies','plantDefs','plantings','rotationPlan','rotationNotes','rotationDelivery','rotationClearance','orderOverrides','settings','tasks','inventory','procurements','wishlist','financeData','suppliers','fieldOps','catalog'];
   const data = { _version: 1, _exported: new Date().toISOString(), _farm: settings.farmName || 'שלושה ברושים ירוקים-ראשי' };
   keys.forEach(k => { try { data[k] = JSON.parse(localStorage.getItem(k) || 'null'); } catch(e){} });
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
@@ -5745,7 +6330,7 @@ function importAllData(input) {
       const data = JSON.parse(e.target.result);
       if (!data._version) { showToast('קובץ לא תקין','err'); return; }
       if (!confirm('ייבוא יחליף את כל הנתונים הקיימים. להמשיך?')) return;
-      const keys = ['plantSpecies','plantDefs','plantings','rotationPlan','rotationNotes','rotationDelivery','rotationClearance','orderOverrides','settings','tasks','inventory','procurements','wishlist','financeData','suppliers','fieldOps'];
+      const keys = ['plantSpecies','plantDefs','plantings','rotationPlan','rotationNotes','rotationDelivery','rotationClearance','orderOverrides','settings','tasks','inventory','procurements','wishlist','financeData','suppliers','fieldOps','catalog'];
       keys.forEach(k => { if (data[k] !== undefined && data[k] !== null) localStorage.setItem(k, JSON.stringify(data[k])); });
       document.getElementById('backup-info').textContent = '✓ יובא מ: ' + (data._farm||'') + ' · ' + (data._exported ? new Date(data._exported).toLocaleString('he-IL') : '');
       showToast('✓ נתונים יובאו — טוען מחדש...');
@@ -5835,7 +6420,7 @@ function syncToSheets() {
     method: 'POST',
     body: JSON.stringify({
       action: 'syncData',
-      data: { plantings, tasks, plantSpecies, plantDefs, settings, procurements: procurements, financeData, inventory, suppliers, fieldOps }
+      data: { plantings, tasks, plantSpecies, plantDefs, settings, procurements: procurements, financeData, inventory, suppliers, fieldOps, catalog }
     })
   }).catch(e => console.log('Sync error:', e));
 }
