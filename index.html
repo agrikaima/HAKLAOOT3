@@ -1300,6 +1300,10 @@
     <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
       <button class="btn btn-outline btn-sm" onclick="testConn()">בדוק חיבור</button>
       <button class="btn btn-outline btn-sm" onclick="pullFromSheets()">⬇️ משוך מהגיליון</button>
+      <button class="btn btn-outline btn-sm" onclick="showVersions()">🕘 היסטוריית גרסאות</button>
+      <button class="btn btn-outline btn-sm" onclick="setUserName()">👤 שם המשתמש</button>
+    </div>
+    <div id="versionsBox" style="display:none;margin-top:10px;border-top:1px solid #ddd;padding-top:10px">
       <button class="btn btn-primary btn-sm" onclick="saveSettings()">שמור</button>
       <a id="openSheetLink" href="https://docs.google.com/spreadsheets/d/1Ihw_DjgY_JbBehPcIy3o1JyYjQRxlgeQ33OqVahtuBw/edit" target="_blank" class="btn btn-outline btn-sm" style="text-decoration:none">📊 פתח גיליון</a>
     </div>
@@ -6428,6 +6432,7 @@ function syncToSheets() {
     method: 'POST',
     body: JSON.stringify({
       action: 'syncData',
+      by: localStorage.getItem('userName') || '',
       data: { plantings, tasks, plantSpecies, plantDefs, settings, procurements: procurements, financeData, inventory, suppliers, fieldOps, catalog }
     })
   }).catch(e => console.log('Sync error:', e));
@@ -6559,5 +6564,57 @@ async function checkRemote() {
 
 setTimeout(checkRemote, 1500);
 setInterval(checkRemote, 180000);
+ function setUserName() {
+  const cur = localStorage.getItem('userName') || '';
+  const name = prompt('מה שמך? (יופיע לצד כל שינוי שתעשה)', cur);
+  if (name && name.trim()) {
+    localStorage.setItem('userName', name.trim());
+    showToast('נשמר: ' + name.trim());
+  }
+}
+
+function ensureUserName() {
+  if (!localStorage.getItem('userName')) setUserName();
+}
+
+async function showVersions() {
+  const box = document.getElementById('versionsBox');
+  if (box.style.display === 'block') { box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  box.innerHTML = 'טוען...';
+  try {
+    const res  = await fetch(settings.scriptUrl + '?action=listVersions&t=' + Date.now());
+    const json = await res.json();
+    const v = (json && json.versions) || [];
+    if (!v.length) { box.innerHTML = 'אין גרסאות שמורות עדיין'; return; }
+    box.innerHTML = v.map(function(x) {
+      return '<div style="display:flex;justify-content:space-between;align-items:center;' +
+             'padding:6px 0;border-bottom:1px solid #eee;font-size:13px">' +
+             '<span>' + escHtml(x.when) + ' — ' + escHtml(x.by || 'ללא שם') + '</span>' +
+             '<button class="btn btn-outline btn-sm" onclick="restoreVersion(' + x.row + ')">שחזר</button>' +
+             '</div>';
+    }).join('');
+  } catch (err) {
+    box.innerHTML = 'שגיאה בטעינת הגרסאות';
+    console.error(err);
+  }
+}
+
+async function restoreVersion(row) {
+  if (!confirm('לשחזר את הגרסה הזו? הנתונים הנוכחיים במכשיר יוחלפו.')) return;
+  showToast('משחזר...');
+  try {
+    const res  = await fetch(settings.scriptUrl + '?action=getVersion&row=' + row + '&t=' + Date.now());
+    const json = await res.json();
+    if (!json || !json.data || !applyRemote(json.data)) { showToast('שחזור נכשל','err'); return; }
+    showToast('שוחזר');
+    setTimeout(function(){ location.reload(); }, 600);
+  } catch (err) {
+    showToast('שגיאה בשחזור','err');
+    console.error(err);
+  }
+}
+
+setTimeout(ensureUserName, 2500);  
 </script>
 </html>
