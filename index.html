@@ -4452,7 +4452,7 @@ function renderTasksList() {
     </div>`).join('');
 }
 
-function saveTasks() { localStorage.setItem('tasks', JSON.stringify(tasks)); }
+function saveTasks() { localStorage.setItem('tasks', JSON.stringify(tasks)); syncToSheets(); }
 
 // ── Procurement ────────────────────────────────
 // pending image for current procurement form
