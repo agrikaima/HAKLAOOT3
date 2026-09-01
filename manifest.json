@@ -1,6 +1,5 @@
-{
-  "name": "יומן שתילות",
-  "short_name": "שתילות",
+"name": "שלושה ברושים ירוקים",
+  "short_name": "ברושים",
   "description": "תיעוד שתילות לפי חלקות וסנכרון ל-Google Sheets",
   "start_url": "./index.html",
   "display": "standalone",
