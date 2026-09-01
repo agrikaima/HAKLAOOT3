@@ -1,7 +1,6 @@
 # שלושה ברושים ירוקים 🌿
 
-**[פתח את האפליקציה](https://shloshabroshimyerukim-main.netlify.app/)**
-
+**[פתח את האפליקציה](https://agrikaima.github.io/HAKLAOOT3/)**
 ## איך להשתמש:
 1. לחץ על הקישור למעלה
 2. בטלפון: "Add to Home Screen"
