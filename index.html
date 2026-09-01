@@ -6434,8 +6434,7 @@ function syncToSheets() {
     body: JSON.stringify({
       action: 'syncData',
       by: localStorage.getItem('userName') || '',
-      data: { plantings, tasks, plantSpecies, plantDefs, settings, procurements: procurements, financeData, inventory, suppliers, fieldOps, catalog }
-    })
+                       data: { plantings, tasks, plantSpecies, plantDefs, settings, procurements: procurements, financeData, inventory, suppliers, fieldOps, catalog, rotationPlan, rotationNotes, rotationDelivery, rotationClearance, rotationGrowDays, orderOverrides }
   }).catch(e => console.log('Sync error:', e));
 }
 function formatDate(d) { if(!d)return'';const[y,m,day]=d.split('-');return`${day}/${m}/${y}`; }
@@ -6509,8 +6508,9 @@ function showToast(msg,type='') {
 function applyRemote(payload) {
   const d = payload.data;
   if (!d) return false;
-  const keys = ['plantings','tasks','plantSpecies','plantDefs','procurements',
-                'financeData','inventory','suppliers','fieldOps','catalog'];
+    const keys = ['plantings','tasks','plantSpecies','plantDefs','procurements',
+                'financeData','inventory','suppliers','fieldOps','catalog',
+                'rotationPlan','rotationNotes','rotationDelivery','rotationClearance','rotationGrowDays','orderOverrides'];
   keys.forEach(function(k) {
     if (d[k] !== undefined) localStorage.setItem(k, JSON.stringify(d[k]));
   });
