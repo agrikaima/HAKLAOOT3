@@ -1,7 +1,7 @@
 {
-"name": "שלושה ברושים ירוקים",
+  "name": "שלושה ברושים ירוקים",
   "short_name": "ברושים",
-  "description": "תיעוד שתילות לפי חלקות וסנכרון ל-Google Sheets",
+  "description": "ניהול שדה — שתילות, משימות, רכש ומלאי",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#1b4332",
