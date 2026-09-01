@@ -6435,6 +6435,7 @@ function syncToSheets() {
       action: 'syncData',
       by: localStorage.getItem('userName') || '',
                        data: { plantings, tasks, plantSpecies, plantDefs, settings, procurements: procurements, financeData, inventory, suppliers, fieldOps, catalog, rotationPlan, rotationNotes, rotationDelivery, rotationClearance, rotationGrowDays, orderOverrides }
+       })
   }).catch(e => console.log('Sync error:', e));
 }
 function formatDate(d) { if(!d)return'';const[y,m,day]=d.split('-');return`${day}/${m}/${y}`; }
