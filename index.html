@@ -1557,7 +1557,6 @@ const _rotCropColors = {};
 const CROP_PALETTE = ['#16a34a','#7c3aed','#0891b2','#b45309','#ea580c','#be123c','#0d9488','#4d7c0f','#1d4ed8','#9a3412','#6b21a8','#0369a1'];
 let orderOverrides = JSON.parse(localStorage.getItem('orderOverrides') || '{}');
 let rotationPlan   = JSON.parse(localStorage.getItem('rotationPlan')   || '{}');
-settings.scriptUrl = 'https://script.google.com/macros/s/AKfycbwK_LF4ijmwHcwbbcoMEBcn00fNp7KhE4rlo5H1nUjXUfGn0SFRojaIGb4z7axMy-Gq4A/exec';
 let rotationNotes    = JSON.parse(localStorage.getItem('rotationNotes')    || '{}');
 let rotationDelivery  = JSON.parse(localStorage.getItem('rotationDelivery')  || '{}');
 let rotationClearance = JSON.parse(localStorage.getItem('rotationClearance') || '{}');
@@ -1567,7 +1566,8 @@ let activeFilter   = '';
 if (!settings.fields)   settings.fields   = [];
 if (!settings.procCats) settings.procCats = ['השקייה','גרעיני חמניה','כללי'];
 if (!settings.scriptUrl) {
-settings.scriptUrl = 'https://script.google.com/macros/s/AKfycbwx1GB57H1fmgVyZ6F6s_4acG8yrStSIZoYqGXkB0rRZ1_t6vntXKLPy-OS4Nr_YSWxdA/exec';  localStorage.setItem('settings', JSON.stringify(settings));
+if (!settings.scriptUrl) {
+settings.scriptUrl = 'https://...AKfycbwK_LF4...exec';  localStorage.setItem('settings', JSON.stringify(settings));
 }
 
 // ── הגדרות חלקות קבועות ─────────────────────────
