@@ -242,6 +242,7 @@
   <button onclick="switchTab('orders')">📦 הזמנות</button>
   <button onclick="switchTab('finance')">💰 כספים</button>
   <button onclick="switchTab('rotation')">🗺️ רוטציה</button>
+  <button onclick="switchTab('harvest')">🧺 קטיף</button>
   <button onclick="switchTab('settings')">⚙️ הגדרות</button>
 </nav>
 
@@ -1283,7 +1284,16 @@
   </div>
 </div>
 
-
+<div id="view-harvest" class="view">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+      <h2 style="margin:0">🧺 קטיף</h2>
+      <button class="btn btn-outline btn-sm" onclick="loadHarvest()">🔄 רענן</button>
+    </div>
+    <div id="harvestSummary" style="margin-top:14px"></div>
+    <div id="harvestList" style="margin-top:14px">טוען...</div>
+  </div>
+</div>
 <!-- ══════════ SETTINGS ══════════ -->
 <div id="view-settings" class="view">
   <div class="card">
@@ -1715,6 +1725,7 @@ function switchTab(tab, el) {
   if (tab === 'beds')        { renderList(); renderFieldOps(); }
   if (tab === 'tasks')       renderTasksList();
   if (tab === 'procurement') { renderProcCatSelect(); renderProcList(); renderProcSupplierList(); renderWishlist(); renderSuppliersList(); renderCatalog(); }
+  if (tab === 'harvest') loadHarvest();
   if (tab === 'inventory')   { renderInvCatSelect(); renderInventory(); renderInvDatalists(); }
   if (tab === 'orders')      { renderOrderFieldSelect(); renderCalcFieldSelect(); renderSpeciesSelect(); renderSpeciesList(); renderOrderSeasonFilter(); renderOrderTable(); }
   if (tab === 'rotation')    { renderRotationSeasons(); renderRotation(); }
@@ -6618,5 +6629,98 @@ async function restoreVersion(row) {
 }
 
 setTimeout(ensureUserName, 2500);  
-</script>
+let harvestRows = [];
+
+async function loadHarvest() {
+  const list = document.getElementById('harvestList');
+  const sum  = document.getElementById('harvestSummary');
+  if (!settings.scriptUrl) { list.textContent = 'אין כתובת Sheets בהגדרות'; return; }
+  list.textContent = 'טוען...';
+  sum.innerHTML = '';
+  try {
+    const res  = await fetch(settings.scriptUrl + '?action=getHarvest&t=' + Date.now());
+    const json = await res.json();
+    harvestRows = (json && json.harvest) || [];
+    renderHarvest();
+  } catch (err) {
+    list.textContent = 'לא הצלחתי לטעון את נתוני הקטיף';
+    console.error(err);
+  }
+}
+
+function renderHarvest() {
+  const list = document.getElementById('harvestList');
+  const sum  = document.getElementById('harvestSummary');
+
+  if (!harvestRows.length) {
+    list.innerHTML = '<div style="padding:20px;text-align:center;color:#6b7280">עדיין אין רשומות קטיף</div>';
+    return;
+  }
+
+  const G = (r, k) => r[k] === undefined || r[k] === '' ? 0 : Number(r[k]) || 0;
+  const byCrop = {};
+  harvestRows.forEach(function(r) {
+    const c = r['ירק'] || 'ללא שם';
+    const o = byCrop[c] = byCrop[c] || { a:0, b:0, waste:0, n:0, unit:r['יחידת מידה']||'' };
+    o.a += G(r,'סוג א'); o.b += G(r,'סוג ב׳'); o.waste += G(r,'שאר / פסולת'); o.n++;
+  });
+
+  const crops = Object.keys(byCrop).sort(function(a,b){
+    return (byCrop[b].a+byCrop[b].b) - (byCrop[a].a+byCrop[a].b);
+  });
+
+  let totalA = 0, totalB = 0, totalW = 0;
+  crops.forEach(function(c){ totalA+=byCrop[c].a; totalB+=byCrop[c].b; totalW+=byCrop[c].waste; });
+
+  sum.innerHTML =
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">' +
+      statBox('סוג א׳', totalA) + statBox('סוג ב׳', totalB) +
+      statBox('פסולת', totalW) + statBox('רשומות', harvestRows.length) +
+    '</div>' +
+    '<table style="width:100%;border-collapse:collapse;font-size:.9rem">' +
+      '<tr style="background:#1b4332;color:#fff"><th style="padding:6px;text-align:right">ירק</th>' +
+      '<th style="padding:6px">סוג א׳</th><th style="padding:6px">סוג ב׳</th>' +
+      '<th style="padding:6px">פסולת</th><th style="padding:6px">קטיפים</th></tr>' +
+      crops.map(function(c,i){
+        const o = byCrop[c];
+        return '<tr style="background:' + (i%2?'#f6fdf8':'#fff') + '">' +
+          '<td style="padding:6px;font-weight:600">' + escHtml(c) + '</td>' +
+          '<td style="padding:6px;text-align:center">' + o.a + '</td>' +
+          '<td style="padding:6px;text-align:center">' + o.b + '</td>' +
+          '<td style="padding:6px;text-align:center">' + o.waste + '</td>' +
+          '<td style="padding:6px;text-align:center">' + o.n + '</td></tr>';
+      }).join('') +
+    '</table>';
+
+  const sorted = harvestRows.slice().sort(function(a,b){
+    return String(b['תאריך קטיף']||'').localeCompare(String(a['תאריך קטיף']||''));
+  });
+
+  list.innerHTML = '<h3 style="margin:16px 0 8px;font-size:1rem">רשומות אחרונות</h3>' +
+    sorted.map(function(r){
+      const loc = [r['חלקה'], r['מספר ערוגה'] ? 'ערוגה ' + r['מספר ערוגה'] : ''].filter(Boolean).join(' · ');
+      const q = [
+        G(r,'סוג א') ? 'א׳ ' + G(r,'סוג א') : '',
+        G(r,'סוג ב׳') ? 'ב׳ ' + G(r,'סוג ב׳') : '',
+        G(r,'שאר / פסולת') ? 'פסולת ' + G(r,'שאר / פסולת') : ''
+      ].filter(Boolean).join(' | ');
+      return '<div style="border:1px solid #d1e8d9;border-radius:8px;padding:10px;margin-bottom:8px">' +
+        '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap">' +
+          '<strong>' + escHtml(r['ירק']||'') + '</strong>' +
+          '<span style="color:#6b7280;font-size:.85rem">' + escHtml(String(r['תאריך קטיף']||'')) + '</span>' +
+        '</div>' +
+        (loc ? '<div style="font-size:.85rem;color:#374151;margin-top:3px">' + escHtml(loc) + '</div>' : '') +
+        (q ? '<div style="font-size:.9rem;margin-top:4px">' + escHtml(q) + ' ' + escHtml(r['יחידת מידה']||'') + '</div>' : '') +
+        (r['שמות - צוות קטיף'] ? '<div style="font-size:.8rem;color:#6b7280;margin-top:3px">👤 ' + escHtml(r['שמות - צוות קטיף']) + '</div>' : '') +
+        (r['הערות טקסט חופשי'] ? '<div style="font-size:.8rem;color:#6b7280;margin-top:3px">' + escHtml(r['הערות טקסט חופשי']) + '</div>' : '') +
+      '</div>';
+    }).join('');
+}
+
+function statBox(label, val) {
+  return '<div style="flex:1;min-width:80px;background:#f6fdf8;border:1px solid #d1e8d9;border-radius:8px;padding:8px;text-align:center">' +
+    '<div style="font-size:1.3rem;font-weight:700;color:#1b4332">' + val + '</div>' +
+    '<div style="font-size:.75rem;color:#6b7280">' + label + '</div></div>';
+}
+ </script>
 </html>
