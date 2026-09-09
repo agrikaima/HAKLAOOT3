@@ -135,6 +135,8 @@
   .ve-num{width:70px;text-align:center;font-family:inherit;font-size:.92rem;
           padding:6px;border:1px solid var(--rule);border-radius:4px}
 
+  .time-in{width:92px;text-align:center;font-family:inherit;font-size:.9rem;
+           padding:5px;border:1px solid var(--rule);border-radius:4px;margin-bottom:5px}
   .times{font-size:.85rem;line-height:1.7;font-weight:500;white-space:nowrap}
   .times b{font-family:'Frank Ruhl Libre',serif;font-size:1rem;color:var(--water)}
 
@@ -205,15 +207,21 @@
       <div class="hint">ה״קצת מעל״ שאת נותנת</div>
     </div>
     <div class="ctl">
-      <label for="startTime">שעת פתיחה</label>
-      <input type="time" id="startTime" value="05:00" onchange="calc()">
-      <div class="hint">מתי הברזים נפתחים</div>
+      <label for="firstStart">שעת פתיחה ראשונה</label>
+      <input type="time" id="firstStart" value="05:00" onchange="chainTimes()">
+      <div class="hint">הברז הראשון</div>
     </div>
     <div class="ctl">
-      <label for="gapHours">מרווח בין השקיות</label>
+      <label for="stagger">רווח בין ברזים</label>
+      <input type="number" id="stagger" value="5" step="1" min="0" max="60" onchange="chainTimes()">
+      <div class="hint">דקות</div>
+    </div>
+    <div class="ctl">
+      <label for="gapHours">מרווח בין סבבים</label>
       <input type="number" id="gapHours" value="8" step="1" min="1" max="23" onchange="calc()">
       <div class="hint">שעות</div>
     </div>
+    <button class="ghost" onclick="chainTimes()">↻ חשב שעות ברצף</button>
     <button onclick="save(event)">שמור שבוע</button>
     <button class="ghost" onclick="window.print()">הדפס</button>
   </div>
@@ -261,7 +269,7 @@
         <th class="c" style="width:58px">השקיות<br>ביום</th>
         <th class="c" style="width:58px">כל כמה<br>ימים</th>
         <th class="c" style="width:110px">דקות<br>להשקיה</th>
-        <th class="c" style="width:130px">שעות</th>
+        <th class="c" style="width:118px">שעת פתיחה<br>וזמנים</th>
         <th class="c hide-s">סה״כ ליום</th>
         <th class="c hide-s">קו״ב לדונם</th>
       </tr>
@@ -355,7 +363,33 @@ function renderValveEditor(){
 }
 
 const state = {};
-DEFAULT_VALVES.forEach(v => state[v.id] = { wet:4, perDay:1, everyDays:1 });
+DEFAULT_VALVES.forEach(v => state[v.id] = { wet:4, perDay:1, everyDays:1, start:'05:00' });
+
+/* ── שרשור שעות: כל ברז נפתח אחרי שהקודם סיים + רווח ── */
+function chainTimes(){
+  const first = document.getElementById('firstStart').value || '05:00';
+  const gap = Number(document.getElementById('stagger').value) || 0;
+  const evap = Number(document.getElementById('evap').value) || 0;
+  const bump = Number(document.getElementById('bump').value) || 0;
+  const targetMM = evap * (1 + bump/100);
+
+  const [h, m] = first.split(':').map(Number);
+  let cursor = h*60 + m;
+
+  VALVES.forEach(function(v){
+    const s = state[v.id];
+    s.start = pad(cursor % 1440);
+
+    const area = dunam(v), f = flow(v);
+    const litersPerDay = targetMM * area * 1000 * s.everyDays;
+    const minsPerDay = f > 0 ? (litersPerDay / f) * 60 : 0;
+    const minsPerRun = s.perDay > 0 ? minsPerDay / s.perDay : 0;
+
+    cursor += Math.round(minsPerRun) + gap;
+  });
+
+  calc();
+}
 
 /* ── ממוצע ארבעת הימים ── */
 function avgEvap(){
@@ -373,7 +407,7 @@ function avgEvap(){
   calc();
 }
 
-/* ── שעות ההשקיה ── */
+/* ── שעות ההשקיה של ברז מסוים ── */
 function schedule(startStr, gapH, perDay, minsPerRun){
   const [h, m] = (startStr || '05:00').split(':').map(Number);
   const out = [];
@@ -390,7 +424,8 @@ function pad(mins){
 }
 
 function set(id, key, val){
-  state[id][key] = Number(val) || (key==='wet'?4:1);
+  if (key === 'start') state[id].start = val || '05:00';
+  else state[id][key] = Number(val) || (key==='wet'?4:1);
   calc();
 }
 
@@ -398,7 +433,6 @@ function calc(){
   const evap = Number(document.getElementById('evap').value) || 0;
   const bump = Number(document.getElementById('bump').value) || 0;
   const targetMM = evap * (1 + bump/100);
-  const startTime = document.getElementById('startTime').value || '05:00';
   const gapHours = Number(document.getElementById('gapHours').value) || 8;
 
   document.getElementById('targetLabel').textContent =
@@ -438,8 +472,10 @@ function calc(){
       '<td class="c"><div class="mins">' + Math.round(minsPerRun) +
         '<span>דקות × ' + s.perDay + '</span></div></td>' +
 
-      '<td class="c"><div class="times">' +
-        schedule(startTime, gapHours, s.perDay, minsPerRun)
+      '<td class="c"><input class="time-in" type="time" value="' + s.start +
+        '" onchange="set(' + v.id + ',\'start\',this.value)">' +
+        '<div class="times">' +
+        schedule(s.start, gapHours, s.perDay, minsPerRun)
           .map(function(t){ return '<b>' + t + '</b>'; }).join('<br>') +
         '</div></td>' +
 
@@ -474,7 +510,7 @@ function save(ev){
   const evap = Number(document.getElementById('evap').value) || 0;
   const bump = Number(document.getElementById('bump').value) || 0;
   const targetMM = evap * (1 + bump/100);
-  const startTime = document.getElementById('startTime').value || '05:00';
+  
   const gapHours = Number(document.getElementById('gapHours').value) || 8;
 
   /* פרטי כל ברז, כולל החישוב */
@@ -489,6 +525,7 @@ function save(ev){
       wet: s.wet,
       perDay: s.perDay,
       everyDays: s.everyDays,
+      start: s.start,
       minsPerRun: s.perDay > 0 ? minsPerDay / s.perDay : 0,
       cubePerDay: litersPerDay / 1000
     };
@@ -496,7 +533,7 @@ function save(ev){
 
   /* מקומי */
   const all = JSON.parse(localStorage.getItem('irrigLog') || '[]');
-  all.unshift({ date:d, evap:evap, bump:bump, startTime:startTime,
+  all.unshift({ date:d, evap:evap, bump:bump,
                 gapHours:gapHours, valves: JSON.parse(JSON.stringify(state)) });
   localStorage.setItem('irrigLog', JSON.stringify(all.slice(0, 30)));
   renderHistory();
@@ -514,7 +551,7 @@ function save(ev){
       evap: evap,
       bump: bump,
       target: Number(targetMM.toFixed(2)),
-      startTime: startTime,
+      startTime: state[VALVES[0].id].start,
       gapHours: gapHours,
       valves: valves
     })
