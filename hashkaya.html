@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>תכנון השקיה שבועי — שלושה ברושים ירוקים</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@500;700;900&family=Heebo:wght@400;500;700;900&display=swap');
+
+  *{box-sizing:border-box;margin:0;padding:0}
+
+  :root{
+    --ink:#16261c;
+    --field:#3f6b4a;
+    --water:#2c6e8f;
+    --rule:#c8d3c9;
+    --paper:#fbfaf6;
+    --dry:#b0521e;
+    --wet:#2c6e8f;
+  }
+
+  body{
+    font-family:'Heebo',Arial,sans-serif;
+    background:#e8e9e4;color:var(--ink);
+    padding:20px 14px 60px;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+
+  .wrap{max-width:1000px;margin:0 auto}
+
+  .panel{
+    background:#fff;padding:18px 22px;margin-bottom:16px;
+    border-right:5px solid var(--water);
+    box-shadow:0 2px 10px rgba(0,0,0,.07);
+  }
+  .panel h2{
+    font-family:'Frank Ruhl Libre',Georgia,serif;
+    font-size:1.15rem;font-weight:700;margin-bottom:14px;
+  }
+
+  .inputs{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end}
+  .ctl{display:flex;flex-direction:column;gap:5px}
+  .ctl label{font-size:.74rem;font-weight:700;color:#5d6b60}
+  .ctl input,.ctl select{
+    font-family:inherit;font-size:.95rem;padding:8px 10px;
+    border:1px solid var(--rule);border-radius:4px;background:#fff;color:var(--ink);
+  }
+  .ctl input[type=number]{width:95px}
+  .ctl input[type=date]{width:160px}
+  .hint{font-size:.72rem;color:#8a968c;margin-top:2px}
+
+  button{
+    font-family:inherit;font-size:.92rem;font-weight:700;
+    padding:9px 20px;border:0;border-radius:4px;cursor:pointer;
+    background:var(--water);color:#fff;
+  }
+  button:hover{background:#235772}
+  button.ghost{background:transparent;color:var(--field);border:1.5px solid var(--field)}
+  button.ghost:hover{background:#eef3ef}
+  button:focus-visible,input:focus-visible,select:focus-visible{outline:2.5px solid var(--dry);outline-offset:2px}
+
+  .sheet{background:var(--paper);padding:26px 28px 34px;box-shadow:0 2px 20px rgba(0,0,0,.09)}
+
+  .head{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;
+        padding-bottom:12px;border-bottom:2.5px solid var(--ink)}
+  .head h1{font-family:'Frank Ruhl Libre',Georgia,serif;font-size:1.85rem;font-weight:900;line-height:1.1}
+  .head .farm{font-size:.8rem;color:#6a7a6d;margin-top:4px}
+  .head .when{text-align:left;flex-shrink:0}
+  .head .when .lbl{font-size:.7rem;color:#6a7a6d;font-weight:700}
+  .head .when .val{font-family:'Frank Ruhl Libre',serif;font-size:1.35rem;font-weight:700}
+
+  table{width:100%;border-collapse:collapse;margin-top:18px}
+  thead th{font-size:.73rem;font-weight:700;color:#5d6b60;text-align:right;
+           padding:0 8px 8px;border-bottom:1.5px solid var(--rule);white-space:nowrap}
+  thead th.c{text-align:center}
+  tbody td{padding:12px 8px;border-bottom:1px solid var(--rule);vertical-align:middle}
+  tbody td.c{text-align:center}
+
+  .valve{font-family:'Frank Ruhl Libre',serif;font-size:1.15rem;font-weight:700;line-height:1.25}
+  .valve small{display:block;font-family:'Heebo',sans-serif;font-size:.75rem;
+               font-weight:400;color:#6a7a6d;margin-top:2px}
+
+  .mins{font-family:'Frank Ruhl Libre',serif;font-size:1.85rem;font-weight:700;
+        color:var(--water);line-height:1;white-space:nowrap}
+  .mins span{display:block;font-family:'Heebo',sans-serif;font-size:.7rem;
+             font-weight:500;color:#6a7a6d;margin-top:3px}
+
+  .num{font-size:.95rem;font-weight:500}
+  .sub{font-size:.78rem;color:#6a7a6d}
+
+  .wet-in{width:52px;text-align:center;font-family:inherit;font-size:.95rem;
+          padding:6px;border:1px solid var(--rule);border-radius:4px}
+  .wet-bar{height:5px;border-radius:3px;margin-top:4px;background:#e4e8e3;overflow:hidden}
+  .wet-bar i{display:block;height:100%}
+
+  .cell-in{width:56px;text-align:center;font-family:inherit;font-size:.92rem;
+           padding:6px;border:1px solid var(--rule);border-radius:4px}
+
+  tfoot td{padding:14px 8px 0;font-weight:700;border-top:2.5px solid var(--ink)}
+
+  .note{margin-top:20px;padding-top:14px;border-top:1px solid var(--rule);
+        font-size:.8rem;color:#6a7a6d;line-height:1.6}
+
+  .evap-row{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end}
+  .four{display:flex;gap:10px;flex-wrap:wrap}
+  .four .ctl input{width:72px;text-align:center}
+  .avg-box{
+    background:#eaf3f7;border:1px solid #b8d4e0;border-radius:6px;
+    padding:10px 18px;text-align:center;min-width:120px;
+  }
+  .avg-num{font-family:'Frank Ruhl Libre',serif;font-size:1.9rem;font-weight:700;
+           color:var(--water);line-height:1}
+  .avg-lbl{font-size:.72rem;color:#6a7a6d;margin-top:3px}
+  .link-btn{
+    display:inline-block;font-size:.88rem;font-weight:700;text-decoration:none;
+    padding:9px 16px;border:1.5px solid var(--water);border-radius:4px;color:var(--water);
+  }
+  .link-btn:hover{background:#eaf3f7}
+
+  details summary{
+    cursor:pointer;font-family:'Frank Ruhl Libre',Georgia,serif;
+    font-size:1.1rem;font-weight:700;padding:2px 0;
+  }
+  details summary:hover{color:var(--water)}
+  details[open] summary{margin-bottom:14px}
+  .ve-table{width:100%;border-collapse:collapse}
+  .ve-table th{font-size:.72rem;font-weight:700;color:#5d6b60;text-align:right;
+               padding:0 6px 7px;border-bottom:1.5px solid var(--rule)}
+  .ve-table th.c{text-align:center}
+  .ve-table td{padding:7px 6px;border-bottom:1px solid #eef0ec}
+  .ve-table td.c{text-align:center}
+  .ve-table td.sub{font-size:.85rem;color:#6a7a6d;font-weight:500}
+  .ve-name{width:100%;font-family:inherit;font-size:.92rem;padding:6px 8px;
+           border:1px solid var(--rule);border-radius:4px}
+  .ve-num{width:70px;text-align:center;font-family:inherit;font-size:.92rem;
+          padding:6px;border:1px solid var(--rule);border-radius:4px}
+
+  .times{font-size:.85rem;line-height:1.7;font-weight:500;white-space:nowrap}
+  .times b{font-family:'Frank Ruhl Libre',serif;font-size:1rem;color:var(--water)}
+
+  .saved{max-width:1000px;margin:16px auto 0;font-size:.85rem;color:#5d6b60}
+  .saved table{margin-top:8px;background:#fff}
+  .saved td,.saved th{padding:7px 9px;font-size:.82rem}
+
+  @media print{
+    body{background:#fff;padding:0}
+    .panel,.noprint{display:none !important}
+    .sheet{box-shadow:none;padding:0}
+    .wet-in,.cell-in{border:0;background:transparent}
+  }
+
+  @media (max-width:640px){
+    body{padding:10px 6px 40px}
+    .sheet{padding:18px 14px 24px}
+    .head{flex-direction:column;align-items:flex-start;gap:8px}
+    .hide-s{display:none}
+    .mins{font-size:1.5rem}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="panel noprint">
+  <h2>התאדות חזויה</h2>
+  <div class="evap-row">
+    <div class="four">
+      <div class="ctl"><label for="d1">יום 1</label>
+        <input type="number" id="d1" step="0.1" min="0" oninput="avgEvap()"></div>
+      <div class="ctl"><label for="d2">יום 2</label>
+        <input type="number" id="d2" step="0.1" min="0" oninput="avgEvap()"></div>
+      <div class="ctl"><label for="d3">יום 3</label>
+        <input type="number" id="d3" step="0.1" min="0" oninput="avgEvap()"></div>
+      <div class="ctl"><label for="d4">יום 4</label>
+        <input type="number" id="d4" step="0.1" min="0" oninput="avgEvap()"></div>
+    </div>
+    <div class="avg-box">
+      <div class="avg-num" id="avgShow">—</div>
+      <div class="avg-lbl">ממוצע מ״מ ליום</div>
+    </div>
+    <a class="link-btn" href="https://www.agrometeorology.co.il/" target="_blank" rel="noopener">
+      🌦️ תחזית לחקלאים
+    </a>
+  </div>
+  <div class="hint" style="margin-top:8px">
+    מזינים את ארבעת הימים מהאתר, והממוצע נכנס לחישוב לבד. אפשר גם להזין ידנית בשדה שלמטה.
+  </div>
+</div>
+
+<div class="panel noprint">
+  <h2>נתוני השבוע</h2>
+  <div class="inputs">
+    <div class="ctl">
+      <label for="weekDate">תאריך</label>
+      <input type="date" id="weekDate">
+    </div>
+    <div class="ctl">
+      <label for="evap">התאדות (מ״מ ליום)</label>
+      <input type="number" id="evap" value="5" step="0.1" min="0" oninput="calc()">
+      <div class="hint">ממוצע ארבעת הימים</div>
+    </div>
+    <div class="ctl">
+      <label for="bump">תוספת (%)</label>
+      <input type="number" id="bump" value="15" step="5" min="0" oninput="calc()">
+      <div class="hint">ה״קצת מעל״ שאת נותנת</div>
+    </div>
+    <div class="ctl">
+      <label for="startTime">שעת פתיחה</label>
+      <input type="time" id="startTime" value="05:00" onchange="calc()">
+      <div class="hint">מתי הברזים נפתחים</div>
+    </div>
+    <div class="ctl">
+      <label for="gapHours">מרווח בין השקיות</label>
+      <input type="number" id="gapHours" value="8" step="1" min="1" max="23" onchange="calc()">
+      <div class="hint">שעות</div>
+    </div>
+    <button onclick="save(event)">שמור שבוע</button>
+    <button class="ghost" onclick="window.print()">הדפס</button>
+  </div>
+</div>
+
+<div class="panel noprint">
+  <details>
+    <summary>⚙️ הגדרות הברזים — אורך, שלוחות ושטח</summary>
+    <table class="ve-table">
+      <thead><tr>
+        <th class="c" style="width:34px">#</th>
+        <th>שם</th>
+        <th class="c" style="width:88px">אורך (מ׳)</th>
+        <th class="c" style="width:78px">שלוחות</th>
+        <th class="c" style="width:88px">מחלק לדונם</th>
+        <th class="c" style="width:70px">דונם</th>
+        <th class="c" style="width:92px">ל׳/שעה</th>
+      </tr></thead>
+      <tbody id="valveEditor"></tbody>
+    </table>
+    <div style="margin-top:10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <button class="ghost" onclick="resetValves()">↺ החזר לברירת מחדל</button>
+      <span class="hint">השינויים נשמרים אוטומטית במכשיר הזה. הספיקה מחושבת: אורך × שלוחות × 8 ל׳/שעה למטר.</span>
+    </div>
+  </details>
+</div>
+
+<div class="sheet">
+  <div class="head">
+    <div>
+      <h1>תכנון השקיה</h1>
+      <div class="farm">שלושה ברושים ירוקים</div>
+    </div>
+    <div class="when">
+      <div class="lbl">יעד השקיה</div>
+      <div class="val" id="targetLabel">—</div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>ברז</th>
+        <th class="c" style="width:62px">רטיבות<br>1–8</th>
+        <th class="c" style="width:58px">השקיות<br>ביום</th>
+        <th class="c" style="width:58px">כל כמה<br>ימים</th>
+        <th class="c" style="width:110px">דקות<br>להשקיה</th>
+        <th class="c" style="width:130px">שעות</th>
+        <th class="c hide-s">סה״כ ליום</th>
+        <th class="c hide-s">קו״ב לדונם</th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+    <tfoot>
+      <tr>
+        <td>סה״כ</td>
+        <td colspan="3"></td>
+        <td class="c" id="totalMin"></td>
+        <td></td>
+        <td class="c hide-s" id="totalCube" colspan="2"></td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <div class="note" id="note"></div>
+</div>
+
+<div class="saved noprint" id="history"></div>
+
+</div>
+
+<script>
+/* ספיקה = אורך × שלוחות × 1.6 × 5  (ל׳/שעה) */
+function flow(v){ return v.length * v.lines * 1.6 * 5; }
+/* שטח בדונם */
+function dunam(v){ return v.length / v.divisor; }
+
+const HE_MONTHS=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+function fmtDate(s){ const d=new Date(s+'T00:00:00'); return d.getDate()+' ב'+HE_MONTHS[d.getMonth()]; }
+
+/* צבע לפי רטיבות: 1 יבש (חום) → 8 רטוב (כחול) */
+function wetColor(n){
+  const t=(Math.max(1,Math.min(8,n))-1)/7;
+  const r=Math.round(176+(44-176)*t), g=Math.round(82+(110-82)*t), b=Math.round(30+(143-30)*t);
+  return 'rgb('+r+','+g+','+b+')';
+}
+
+/* ── הברזים, לפי הטבלה בשיטס. ניתנים לעריכה ונשמרים ── */
+const DEFAULT_VALVES = [
+  { id:1, name:'בוסתן',       length:50,  divisor:555, lines:1 },
+  { id:2, name:'חול ברוטו',   length:310, divisor:666, lines:1 },
+  { id:3, name:'אילנית',      length:840, divisor:666, lines:3 },
+  { id:4, name:'בז / קיפוד',  length:840, divisor:550, lines:2 },
+  { id:5, name:'פתוח וזיתים', length:850, divisor:550, lines:3 }
+];
+
+let VALVES = JSON.parse(localStorage.getItem('irrigValves') || 'null') || 
+             JSON.parse(JSON.stringify(DEFAULT_VALVES));
+
+function saveValves(){
+  localStorage.setItem('irrigValves', JSON.stringify(VALVES));
+}
+
+function setValve(id, key, val){
+  const v = VALVES.find(x => x.id === id);
+  if (!v) return;
+  v[key] = key === 'name' ? val : (Number(val) || 0);
+  saveValves();
+  calc();
+  renderValveEditor();
+}
+
+function resetValves(){
+  if (!confirm('להחזיר את כל הברזים לערכי ברירת המחדל?')) return;
+  VALVES = JSON.parse(JSON.stringify(DEFAULT_VALVES));
+  saveValves();
+  renderValveEditor();
+  calc();
+}
+
+function renderValveEditor(){
+  const box = document.getElementById('valveEditor');
+  if (!box) return;
+  box.innerHTML = VALVES.map(function(v){
+    return '<tr>' +
+      '<td class="c" style="color:#6a7a6d;font-weight:700">' + v.id + '</td>' +
+      '<td><input class="ve-name" value="' + v.name.replace(/"/g,'&quot;') +
+        '" onchange="setValve(' + v.id + ',\'name\',this.value)"></td>' +
+      '<td class="c"><input class="ve-num" type="number" min="0" value="' + v.length +
+        '" onchange="setValve(' + v.id + ',\'length\',this.value)"></td>' +
+      '<td class="c"><input class="ve-num" type="number" min="1" max="12" value="' + v.lines +
+        '" onchange="setValve(' + v.id + ',\'lines\',this.value)"></td>' +
+      '<td class="c"><input class="ve-num" type="number" min="1" value="' + v.divisor +
+        '" onchange="setValve(' + v.id + ',\'divisor\',this.value)"></td>' +
+      '<td class="c sub">' + dunam(v).toFixed(2) + '</td>' +
+      '<td class="c sub">' + flow(v).toLocaleString('he-IL') + '</td>' +
+      '</tr>';
+  }).join('');
+}
+
+const state = {};
+DEFAULT_VALVES.forEach(v => state[v.id] = { wet:4, perDay:1, everyDays:1 });
+
+/* ── ממוצע ארבעת הימים ── */
+function avgEvap(){
+  const vals = ['d1','d2','d3','d4']
+    .map(id => document.getElementById(id).value)
+    .filter(v => v !== '')
+    .map(Number)
+    .filter(n => !isNaN(n));
+
+  if (!vals.length) { document.getElementById('avgShow').textContent = '—'; return; }
+
+  const avg = vals.reduce((a,b) => a+b, 0) / vals.length;
+  document.getElementById('avgShow').textContent = avg.toFixed(1);
+  document.getElementById('evap').value = avg.toFixed(1);
+  calc();
+}
+
+/* ── שעות ההשקיה ── */
+function schedule(startStr, gapH, perDay, minsPerRun){
+  const [h, m] = (startStr || '05:00').split(':').map(Number);
+  const out = [];
+  for (let i = 0; i < perDay; i++) {
+    const startMin = (h*60 + m + i*gapH*60) % 1440;
+    const endMin = (startMin + Math.round(minsPerRun)) % 1440;
+    out.push(pad(startMin) + '–' + pad(endMin));
+  }
+  return out;
+}
+function pad(mins){
+  const h = Math.floor(mins/60), m = mins%60;
+  return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+}
+
+function set(id, key, val){
+  state[id][key] = Number(val) || (key==='wet'?4:1);
+  calc();
+}
+
+function calc(){
+  const evap = Number(document.getElementById('evap').value) || 0;
+  const bump = Number(document.getElementById('bump').value) || 0;
+  const targetMM = evap * (1 + bump/100);
+  const startTime = document.getElementById('startTime').value || '05:00';
+  const gapHours = Number(document.getElementById('gapHours').value) || 8;
+
+  document.getElementById('targetLabel').textContent =
+    targetMM.toFixed(1) + ' מ״מ ליום';
+
+  let html = '', totalMin = 0, totalCube = 0;
+
+  VALVES.forEach(v => {
+    const s = state[v.id];
+    const area = dunam(v);
+    const f = flow(v);
+
+    /* 1 מ״מ על דונם = 1 קו״ב = 1000 ליטר */
+    const litersPerDay = targetMM * area * 1000 * s.everyDays;
+    const minsPerDay = f > 0 ? (litersPerDay / f) * 60 : 0;
+    const minsPerRun = s.perDay > 0 ? minsPerDay / s.perDay : 0;
+
+    totalMin += minsPerDay;
+    totalCube += litersPerDay / 1000;
+
+    html += '<tr>' +
+      '<td><div class="valve">' + v.name +
+        '<small>ברז ' + v.id + ' · ' + area.toFixed(2) + ' דונם · ' +
+        f.toLocaleString('he-IL') + ' ל״ש</small></div></td>' +
+
+      '<td class="c"><input class="wet-in" type="number" min="1" max="8" value="' + s.wet +
+        '" onchange="set(' + v.id + ',\'wet\',this.value)">' +
+        '<div class="wet-bar"><i style="width:' + (s.wet/8*100) + '%;background:' +
+        wetColor(s.wet) + '"></i></div></td>' +
+
+      '<td class="c"><input class="cell-in" type="number" min="1" max="6" value="' + s.perDay +
+        '" onchange="set(' + v.id + ',\'perDay\',this.value)"></td>' +
+
+      '<td class="c"><input class="cell-in" type="number" min="1" max="14" value="' + s.everyDays +
+        '" onchange="set(' + v.id + ',\'everyDays\',this.value)"></td>' +
+
+      '<td class="c"><div class="mins">' + Math.round(minsPerRun) +
+        '<span>דקות × ' + s.perDay + '</span></div></td>' +
+
+      '<td class="c"><div class="times">' +
+        schedule(startTime, gapHours, s.perDay, minsPerRun)
+          .map(function(t){ return '<b>' + t + '</b>'; }).join('<br>') +
+        '</div></td>' +
+
+      '<td class="c hide-s"><div class="num">' + Math.round(minsPerDay) + ' דק׳</div>' +
+        '<div class="sub">' + (litersPerDay/1000).toFixed(1) + ' קו״ב</div></td>' +
+
+      '<td class="c hide-s"><div class="num">' +
+        (area>0 ? (litersPerDay/1000/area).toFixed(1) : '—') + '</div></td>' +
+      '</tr>';
+  });
+
+  document.getElementById('rows').innerHTML = html;
+  document.getElementById('totalMin').innerHTML =
+    '<div class="mins" style="font-size:1.4rem">' + Math.round(totalMin) + '<span>דקות</span></div>';
+  document.getElementById('totalCube').innerHTML =
+    '<div class="num">' + totalCube.toFixed(1) + ' קו״ב ליום</div>';
+
+  document.getElementById('note').innerHTML =
+    'החישוב: התאדות ' + evap + ' מ״מ + ' + bump + '% תוספת = <strong>' + targetMM.toFixed(1) +
+    ' מ״מ ליום</strong>. הדקות מחושבות לפי הספיקה של כל ברז והשטח שהוא משקה. ' +
+    'עמודת ״כל כמה ימים״ מרכזת את הכמות — השקיה כל 3 ימים נותנת פי 3 בכל פעם. ' +
+    'רטיבות 1–8 נרשמת לתיעוד ולהשוואה, ואינה משנה את החישוב.';
+}
+
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwK_LF4ijmwHcwbbcoMEBcn00fNp7KhE4rlo5H1nUjXUfGn0SFRojaIGb4z7axMy-Gq4A/exec';
+
+/* ── שמירה מקומית + לגיליון ── */
+function save(ev){
+  const d = document.getElementById('weekDate').value;
+  if (!d) { alert('בחרי תאריך'); return; }
+
+  const evap = Number(document.getElementById('evap').value) || 0;
+  const bump = Number(document.getElementById('bump').value) || 0;
+  const targetMM = evap * (1 + bump/100);
+  const startTime = document.getElementById('startTime').value || '05:00';
+  const gapHours = Number(document.getElementById('gapHours').value) || 8;
+
+  /* פרטי כל ברז, כולל החישוב */
+  const valves = VALVES.map(function(v){
+    const s = state[v.id];
+    const area = dunam(v);
+    const f = flow(v);
+    const litersPerDay = targetMM * area * 1000 * s.everyDays;
+    const minsPerDay = f > 0 ? (litersPerDay / f) * 60 : 0;
+    return {
+      name: v.name,
+      wet: s.wet,
+      perDay: s.perDay,
+      everyDays: s.everyDays,
+      minsPerRun: s.perDay > 0 ? minsPerDay / s.perDay : 0,
+      cubePerDay: litersPerDay / 1000
+    };
+  });
+
+  /* מקומי */
+  const all = JSON.parse(localStorage.getItem('irrigLog') || '[]');
+  all.unshift({ date:d, evap:evap, bump:bump, startTime:startTime,
+                gapHours:gapHours, valves: JSON.parse(JSON.stringify(state)) });
+  localStorage.setItem('irrigLog', JSON.stringify(all.slice(0, 30)));
+  renderHistory();
+
+  /* לגיליון */
+  const btn = ev && ev.target;
+  if (btn) { btn.disabled = true; btn.textContent = 'שולח...'; }
+
+  fetch(SCRIPT_URL, {
+    method: 'POST',
+    body: JSON.stringify({
+      action: 'saveIrrigation',
+      date: d,
+      by: localStorage.getItem('userName') || '',
+      evap: evap,
+      bump: bump,
+      target: Number(targetMM.toFixed(2)),
+      startTime: startTime,
+      gapHours: gapHours,
+      valves: valves
+    })
+  }).then(function(){
+    if (btn) { btn.disabled = false; btn.textContent = '✓ נשמר'; 
+               setTimeout(function(){ btn.textContent = 'שמור שבוע'; }, 2000); }
+  }).catch(function(err){
+    console.error(err);
+    if (btn) { btn.disabled = false; btn.textContent = 'שמור שבוע'; }
+    alert('נשמר במכשיר, אבל השליחה לגיליון נכשלה.');
+  });
+}
+
+function renderHistory(){
+  const all = JSON.parse(localStorage.getItem('irrigLog') || '[]');
+  const box = document.getElementById('history');
+  if (!all.length) { box.innerHTML = ''; return; }
+
+  box.innerHTML = '<strong>שבועות קודמים</strong><table>' +
+    '<tr><th>תאריך</th><th>התאדות</th><th>תוספת</th>' +
+    VALVES.map(v => '<th>' + v.name + '</th>').join('') + '</tr>' +
+    all.map(function(r){
+      return '<tr><td>' + fmtDate(r.date) + '</td>' +
+        '<td>' + r.evap + ' מ״מ</td><td>' + r.bump + '%</td>' +
+        VALVES.map(function(v){
+          const s = r.valves[v.id] || {};
+          return '<td>רטיבות ' + (s.wet||'—') + '</td>';
+        }).join('') + '</tr>';
+    }).join('') + '</table>';
+}
+
+/* ── התחלה ── */
+document.getElementById('weekDate').valueAsDate = new Date();
+renderValveEditor();
+calc();
+renderHistory();
+</script>
+</body>
+</html>
