@@ -265,6 +265,7 @@
     <thead>
       <tr>
         <th>ברז</th>
+        <th class="c" style="width:70px">תוספת<br>%</th>
         <th class="c" style="width:62px">רטיבות<br>1–8</th>
         <th class="c" style="width:58px">השקיות<br>ביום</th>
         <th class="c" style="width:58px">כל כמה<br>ימים</th>
@@ -278,7 +279,7 @@
     <tfoot>
       <tr>
         <td>סה״כ</td>
-        <td colspan="3"></td>
+        <td colspan="4"></td>
         <td class="c" id="totalMin"></td>
         <td></td>
         <td class="c hide-s" id="totalCube" colspan="2"></td>
@@ -363,7 +364,18 @@ function renderValveEditor(){
 }
 
 const state = {};
-DEFAULT_VALVES.forEach(v => state[v.id] = { wet:4, perDay:1, everyDays:1, start:'05:00' });
+DEFAULT_VALVES.forEach(v => state[v.id] = { wet:4, perDay:1, everyDays:1, start:'05:00', bump:null });
+
+/* התוספת בפועל של ברז: שלו אם הוגדרה, אחרת הכללית */
+function bumpOf(id){
+  const b = state[id].bump;
+  return (b === null || b === undefined || b === '') ?
+    (Number(document.getElementById('bump').value) || 0) : Number(b);
+}
+function targetOf(id){
+  const evap = Number(document.getElementById('evap').value) || 0;
+  return evap * (1 + bumpOf(id)/100);
+}
 
 /* ── שרשור שעות: כל ברז נפתח אחרי שהקודם סיים + רווח ── */
 function chainTimes(){
@@ -381,7 +393,7 @@ function chainTimes(){
     s.start = pad(cursor % 1440);
 
     const area = dunam(v), f = flow(v);
-    const litersPerDay = targetMM * area * 1000 * s.everyDays;
+    const litersPerDay = targetOf(v.id) * area * 1000 * s.everyDays;
     const minsPerDay = f > 0 ? (litersPerDay / f) * 60 : 0;
     const minsPerRun = s.perDay > 0 ? minsPerDay / s.perDay : 0;
 
@@ -425,6 +437,7 @@ function pad(mins){
 
 function set(id, key, val){
   if (key === 'start') state[id].start = val || '05:00';
+  else if (key === 'bump') state[id].bump = (val === '' ? null : Number(val));
   else state[id][key] = Number(val) || (key==='wet'?4:1);
   calc();
 }
@@ -444,9 +457,10 @@ function calc(){
     const s = state[v.id];
     const area = dunam(v);
     const f = flow(v);
+    const vTarget = targetOf(v.id);
 
     /* 1 מ״מ על דונם = 1 קו״ב = 1000 ליטר */
-    const litersPerDay = targetMM * area * 1000 * s.everyDays;
+    const litersPerDay = vTarget * area * 1000 * s.everyDays;
     const minsPerDay = f > 0 ? (litersPerDay / f) * 60 : 0;
     const minsPerRun = s.perDay > 0 ? minsPerDay / s.perDay : 0;
 
@@ -457,6 +471,12 @@ function calc(){
       '<td><div class="valve">' + v.name +
         '<small>ברז ' + v.id + ' · ' + area.toFixed(2) + ' דונם · ' +
         f.toLocaleString('he-IL') + ' ל״ש</small></div></td>' +
+
+      '<td class="c"><input class="cell-in" type="number" min="0" step="5" placeholder="' +
+        (Number(document.getElementById('bump').value)||0) + '" value="' +
+        (s.bump === null || s.bump === undefined ? '' : s.bump) +
+        '" onchange="set(' + v.id + ',\'bump\',this.value)">' +
+        '<div class="sub" style="margin-top:3px">' + vTarget.toFixed(1) + ' מ״מ</div></td>' +
 
       '<td class="c"><input class="wet-in" type="number" min="1" max="8" value="' + s.wet +
         '" onchange="set(' + v.id + ',\'wet\',this.value)">' +
@@ -497,6 +517,7 @@ function calc(){
     'החישוב: התאדות ' + evap + ' מ״מ + ' + bump + '% תוספת = <strong>' + targetMM.toFixed(1) +
     ' מ״מ ליום</strong>. הדקות מחושבות לפי הספיקה של כל ברז והשטח שהוא משקה. ' +
     'עמודת ״כל כמה ימים״ מרכזת את הכמות — השקיה כל 3 ימים נותנת פי 3 בכל פעם. ' +
+    'עמודת התוספת ריקה = משתמשת בתוספת הכללית. מספר בתוכה גובר עליה לאותו ברז. ' +
     'רטיבות 1–8 נרשמת לתיעוד ולהשוואה, ואינה משנה את החישוב.';
 }
 
@@ -526,6 +547,7 @@ function save(ev){
       perDay: s.perDay,
       everyDays: s.everyDays,
       start: s.start,
+      bump: bumpOf(v.id),
       minsPerRun: s.perDay > 0 ? minsPerDay / s.perDay : 0,
       cubePerDay: litersPerDay / 1000
     };
