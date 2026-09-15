@@ -166,6 +166,13 @@
     </select>
   </div>
   <div class="ctl">
+    <label for="emptyFields">חלקות ריקות</label>
+    <select id="emptyFields" onchange="build()">
+      <option value="">הסתר</option>
+      <option value="1">הצג</option>
+    </select>
+  </div>
+  <div class="ctl">
     <label for="noteLines">שורות להערות</label>
     <input type="number" id="noteLines" value="2" min="0" max="6" onchange="build()">
   </div>
@@ -408,7 +415,9 @@ function build(){
     html+='<div class="page">'+pageHead(season,seasonStart,'מפת שדה');
 
     const plan=L('rotationPlan','{}')[season]||{};
-    const fields={};
+
+    /* מה משובץ, לפי חלקה וערוגה */
+    const placed={};
     Object.keys(plan).forEach(key=>{
       const m=String(key).match(/^(.*)_(\d+)$/);
       if(!m) return;
@@ -416,25 +425,45 @@ function build(){
       const val=plan[key];
       const segs=Array.isArray(val)?val:(typeof val==='string'?[{crop:val}]:[]);
       if(!segs.length) return;
-      (fields[f]=fields[f]||{})[bed]=segs;
+      (placed[f]=placed[f]||{})[bed]=segs;
     });
 
-    const fieldNames=Object.keys(fields).sort((a,b)=>a.localeCompare(b,'he'));
+    /* רשימת החלקות מההגדרות — כולל ריקות, בסדר שלהן */
+    const defsList=L('fieldDefs','null');
+    let fieldList;
+    if(Array.isArray(defsList)&&defsList.length){
+      fieldList=defsList.map(f=>({name:f.name,beds:Number(f.beds)||0}));
+    } else {
+      fieldList=Object.keys(placed).map(f=>({
+        name:f,
+        beds:Math.max.apply(null,Object.keys(placed[f]).map(Number))
+      }));
+    }
 
-    if(!fieldNames.length){
+    /* חלקות שיש בהן שיבוץ אך אינן בהגדרות — נוסיף בסוף כדי לא לאבד מידע */
+    Object.keys(placed).forEach(f=>{
+      if(!fieldList.some(x=>x.name===f)){
+        fieldList.push({name:f,beds:Math.max.apply(null,Object.keys(placed[f]).map(Number))});
+      }
+    });
+
+    const showEmptyFields=!!document.getElementById('emptyFields').value;
+    const visible=fieldList.filter(f=>showEmptyFields||placed[f.name]);
+
+    if(!visible.length){
       html+='<div class="empty-msg"><strong>אין שיבוצים בעונה הזו</strong>'+
         'אפשר לשבץ גידולים בלשונית הרוטציה.</div>';
     } else {
-      fieldNames.forEach(f=>{
-        const beds=fields[f];
-        const nums=Object.keys(beds).map(Number).sort((a,b)=>a-b);
-        const maxBed=Math.max.apply(null,nums);
+      visible.forEach(f=>{
+        const beds=placed[f.name]||{};
+        const assigned=Object.keys(beds).length;
+        const total=f.beds||Math.max.apply(null,[0].concat(Object.keys(beds).map(Number)));
 
-        html+='<div class="map-field"><h3>'+esc(f)+
+        html+='<div class="map-field"><h3>'+esc(f.name)+
           ' <span style="font-size:.74rem;font-weight:400;color:#6a7a6d">'+
-          nums.length+' ערוגות משובצות</span></h3><div class="beds-row '+bedShape+'">';
+          assigned+' מתוך '+total+' ערוגות</span></h3><div class="beds-row '+bedShape+'">';
 
-        for(let b=1;b<=maxBed;b++){
+        for(let b=1;b<=total;b++){
           const segs=beds[b];
           if(!segs){
             html+='<div class="bed empty"><div class="n">'+b+'</div></div>';
