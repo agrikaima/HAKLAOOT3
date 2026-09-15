@@ -2223,6 +2223,48 @@ function saveRotationPlan() {
   localStorage.setItem('rotationPlan', JSON.stringify(rotationPlan));
   _updateUndoBtn();
 }
+/* הפיכת כיוון שתילה של משתל בודד בערוגה */
+function toggleSegmentOrient(fieldName, bedNum, segIdx) {
+  var season = document.getElementById('rot-plan-season').value.trim();
+  if (!season || !rotationPlan[season]) return;
+  var key = fieldName + '_' + bedNum;
+  var cell = rotationPlan[season][key];
+  if (!cell || !Array.isArray(cell.segments) || !cell.segments[segIdx]) return;
+
+  var field = FIELD_DEFS.find(function(f){ return f.name === fieldName; });
+  var seg = cell.segments[segIdx];
+  var sp = plantSpecies.find(function(x){ return x.name === seg.crop; });
+  var isDripBedSp = !!(field && field.drips);
+  var wasAlong = (seg.orient === 'along') || (!seg.orient && isDripBedSp);
+
+  seg.orient = wasAlong ? 'across' : 'along';
+
+  /* בדיקת מקום אחרי ההיפוך */
+  var totalDrips = (field && field.drips) ? field.drips : 1;
+  var bedLen = (field && field.len) ? field.len : 0;
+  var alongDrips = 0, acrossLen = 0;
+  cell.segments.forEach(function(x){
+    var xAlong = (x.orient === 'along') || (!x.orient && isDripBedSp);
+    var xsp = plantSpecies.find(function(y){ return y.name === x.crop; });
+    var xDrips = (xsp && xsp.drips) ? xsp.drips : 1;
+    if (xAlong) alongDrips += xDrips;
+    else acrossLen += (x.meters || 0);
+  });
+
+  var over = '';
+  if (alongDrips > totalDrips) {
+    over = 'הערוגה עמוסה — ' + alongDrips + ' שלוחות מתוך ' + totalDrips + '.';
+  } else if (bedLen && acrossLen > bedLen + 0.05) {
+    over = 'הערוגה עמוסה — ' + Math.round(acrossLen) + 'מ׳ מתוך ' + bedLen + 'מ׳.';
+  }
+
+  saveRotationPlan();
+  renderRotationPlanner();
+
+  if (over) showToast(over, 'err');
+  else showToast(seg.crop + ' — ' + (wasAlong ? 'לרוחב' : 'לאורך'));
+}
+
 function undoRotationPlan() {
   if (_rotUndoStack.length < 2) return;
   _rotUndoStack.pop(); // remove current
@@ -2668,6 +2710,16 @@ function _renderRotationPlannerInner() {
           +'</div>'
           +(function(){var sp2=plantSpecies.find(function(x){return x.name===s.crop;});var dm=isDripBedSp&&sp2&&sp2.dripBased?(sp2.rows||1):1;return'<div style="font-weight:600;color:#1f2937;word-break:break-word;line-height:1.3">'+escHtml(s.crop)+(s.meters!==null?'<span style="font-weight:400;color:#6b7280"> '+(Math.round(s.meters*dm*10)/10)+'מ׳</span>':'')+'</div>';})()
           +'</div>'
+          +(function(){
+             var isAlong = (s.orient === 'along') || (!s.orient && isDripBedSp);
+             var lbl = isAlong ? '↕' : '↔';
+             var ttl = isAlong ? 'לאורך — לחצי כדי להפוך לרוחב' : 'לרוחב — לחצי כדי להפוך לאורך';
+             var bg  = isAlong ? '#dbeafe' : '#ede9fe';
+             var fg  = isAlong ? '#1d4ed8' : '#6d28d9';
+             return '<span onclick="event.stopPropagation();toggleSegmentOrient(\''+safeField+'\','+i+','+si+')" '
+               +'style="cursor:pointer;background:'+bg+';color:'+fg+';font-size:.62rem;font-weight:700;'
+               +'border-radius:4px;padding:0 4px;flex-shrink:0" title="'+ttl+'">'+lbl+'</span>';
+           })()
           +'<span onclick="event.stopPropagation();(function(){var el=document.getElementById(\''+segNoteId+'\');el.style.display=el.style.display===\'none\'?\'block\':\'none\';if(el.style.display===\'block\')el.focus();})()" style="cursor:pointer;color:#a78bfa;font-size:.65rem;padding:0 2px;flex-shrink:0" title="הערה למשתל">✎</span>'
           +'<span onclick="event.stopPropagation();removeBedSegment(\''+safeField+'\','+i+','+si+')" style="cursor:pointer;color:#ef4444;font-size:.7rem;padding:0 2px;flex-shrink:0" class="no-print">✕</span>'
           +'</div>'
@@ -2792,10 +2844,7 @@ function _renderRotationPlannerInner() {
       const mifteachLabel = field.mifteach && ((i-1) % field.mifteach === 0)
         ? '<div style="font-size:.52rem;color:#9ca3af;font-weight:700;letter-spacing:.03em;margin-bottom:1px">מ׳'+(Math.floor((i-1)/field.mifteach)+1)+'</div>'
         : '';
-      var hasAlong  = segs.some(function(s){ return s.orient==='along' || (!s.orient && isDripBedSp); });
-      var hasAcross = segs.some(function(s){ return s.orient==='across'; });
-      var dripBadge = hasAlong  ? '<span style="font-size:.48rem;background:#dbeafe;color:#1d4ed8;border-radius:3px;padding:0 3px;font-weight:700;vertical-align:middle;margin-right:2px">↕ לאורך</span>' : '';
-      dripBadge    += hasAcross ? '<span style="font-size:.48rem;background:#ede9fe;color:#6d28d9;border-radius:3px;padding:0 3px;font-weight:700;vertical-align:middle;margin-right:2px">↔ לרוחב</span>' : '';
+      var dripBadge = '';
       const cellHtml = '<div class="rot-bed-cell '+conflictCls2+'" style="cursor:pointer;'+mifteachBg+'" onclick="paintBed(\''+safeField+'\','+i+')">'
         + mifteachLabel
         + '<div class="rot-bed-num">'+i+dripBadge+'</div>'
