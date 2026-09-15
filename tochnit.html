@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>תוכנית העונה — שלושה ברושים ירוקים</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@500;700;900&family=Heebo:wght@400;500;700;900&display=swap');
+
+  *{box-sizing:border-box;margin:0;padding:0}
+
+  :root{
+    --ink:#16261c;
+    --field:#3f6b4a;
+    --rule:#c8d3c9;
+    --faint:#e6ebe6;
+    --paper:#fff;
+    --mark:#b0521e;
+  }
+
+  body{
+    font-family:'Heebo',Arial,sans-serif;
+    background:#e8e9e4;color:var(--ink);
+    padding:20px 14px 60px;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+
+  /* ── controls ── */
+  .controls{
+    max-width:760px;margin:0 auto 18px;background:#fff;
+    padding:16px 20px;border-right:5px solid var(--field);
+    display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;
+    box-shadow:0 2px 10px rgba(0,0,0,.07);
+  }
+  .ctl{display:flex;flex-direction:column;gap:5px}
+  .ctl label{font-size:.74rem;font-weight:700;color:#5d6b60}
+  .ctl select,.ctl input{
+    font-family:inherit;font-size:.95rem;padding:8px 10px;
+    border:1px solid var(--rule);border-radius:4px;background:#fff;color:var(--ink);
+  }
+  button{
+    font-family:inherit;font-size:.92rem;font-weight:700;
+    padding:9px 20px;border:0;border-radius:4px;cursor:pointer;
+    background:var(--field);color:#fff;
+  }
+  button:hover{background:#325740}
+  button.ghost{background:transparent;color:var(--field);border:1.5px solid var(--field)}
+  button.ghost.on{background:var(--field);color:#fff}
+  button:focus-visible,select:focus-visible,input:focus-visible{outline:2.5px solid var(--mark);outline-offset:2px}
+
+  .status{max-width:760px;margin:0 auto 18px;padding:11px 16px;font-size:.88rem;
+          background:#fff4e8;border-right:5px solid var(--mark)}
+  .status:empty{display:none}
+
+  /* ── A4 page ── */
+  .page{
+    width:210mm;min-height:297mm;margin:0 auto 20px;
+    background:var(--paper);padding:14mm 13mm 16mm;
+    box-shadow:0 2px 24px rgba(0,0,0,.1);
+  }
+
+  .head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;
+        padding-bottom:9px;border-bottom:2.5px solid var(--ink)}
+  .head h1{font-family:'Frank Ruhl Libre',Georgia,serif;font-size:1.7rem;
+           font-weight:900;line-height:1.1}
+  .head .farm{font-size:.76rem;color:#6a7a6d;margin-top:3px}
+  .head .meta{text-align:left;flex-shrink:0;font-size:.74rem;color:#6a7a6d;line-height:1.5}
+  .head .meta b{display:block;font-family:'Frank Ruhl Libre',serif;
+                font-size:1.15rem;color:var(--ink)}
+
+  /* ── week block ── */
+  .week{margin-top:14px;page-break-inside:avoid}
+  .week-bar{
+    display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+    background:var(--faint);padding:5px 9px;border-right:4px solid var(--field);
+  }
+  .week-bar .w{font-family:'Frank Ruhl Libre',serif;font-size:1.02rem;font-weight:700}
+  .week-bar .d{font-size:.76rem;color:#5d6b60;font-weight:500}
+
+  table{width:100%;border-collapse:collapse}
+  thead th{font-size:.68rem;font-weight:700;color:#5d6b60;text-align:right;
+           padding:5px 6px 4px;border-bottom:1px solid var(--rule);white-space:nowrap}
+  thead th.c{text-align:center}
+  tbody td{padding:7px 6px;border-bottom:1px solid #eef0ec;vertical-align:top;font-size:.83rem}
+  tbody td.c{text-align:center}
+
+  .crop{font-family:'Frank Ruhl Libre',serif;font-size:.99rem;font-weight:700;line-height:1.2}
+  .wave{font-size:.7rem;color:#6a7a6d;margin-top:1px}
+  .qty{font-family:'Frank Ruhl Libre',serif;font-size:1.2rem;font-weight:700;white-space:nowrap}
+  .qty span{font-size:.62rem;font-family:'Heebo',sans-serif;font-weight:400;
+            color:#6a7a6d;display:block}
+  .loc{line-height:1.4}
+  .loc .beds{color:#6a7a6d;font-size:.74rem}
+  .loc .none{color:#a8b3a9}
+  .how{font-size:.76rem;color:#54634f;line-height:1.45}
+  .notes-line{border-bottom:1px dotted #b3bdb4;height:15px;margin-top:3px}
+
+  .week-notes{margin-top:5px;padding:6px 9px;border:1px dashed var(--rule);border-radius:3px}
+  .week-notes .lbl{font-size:.66rem;color:#8a968c;font-weight:700;margin-bottom:3px}
+  .week-notes .ln{border-bottom:1px dotted #b3bdb4;height:15px;margin-bottom:5px}
+
+  /* ── field map ── */
+  .map-field{margin-top:13px;page-break-inside:avoid}
+  .map-field h3{font-family:'Frank Ruhl Libre',serif;font-size:1rem;font-weight:700;
+                background:var(--faint);padding:4px 9px;border-right:4px solid var(--field)}
+  .beds-row{display:flex;flex-wrap:wrap;gap:3px;margin-top:5px}
+  .bed{
+    flex:1 1 0;min-width:52px;border:1px solid var(--rule);border-radius:3px;
+    padding:4px 3px;min-height:56px;display:flex;flex-direction:column;
+  }
+  .bed .n{font-size:.62rem;color:#8a968c;font-weight:700;text-align:center;
+          border-bottom:1px solid #eef0ec;padding-bottom:2px;margin-bottom:3px}
+  .bed .c{font-size:.66rem;line-height:1.3;text-align:center;font-weight:500}
+  .bed .c em{display:block;font-style:normal;color:#6a7a6d;font-size:.6rem}
+  .bed.empty{background:#fafbfa}
+
+  .foot{margin-top:16px;padding-top:9px;border-top:1px solid var(--rule);
+        font-size:.7rem;color:#8a968c;display:flex;justify-content:space-between}
+
+  .empty-msg{padding:50px 20px;text-align:center;color:#6a7a6d;line-height:1.7}
+  .empty-msg strong{display:block;font-family:'Frank Ruhl Libre',serif;
+                    font-size:1.2rem;color:var(--ink);margin-bottom:7px}
+
+  @media print{
+    @page{size:A4;margin:0}
+    body{background:#fff;padding:0}
+    .controls,.status,.noprint{display:none !important}
+    .page{width:auto;min-height:0;margin:0;padding:12mm 11mm;box-shadow:none}
+    .week,.map-field{page-break-inside:avoid}
+  }
+
+  @media (max-width:760px){
+    body{padding:10px 6px 40px}
+    .page{width:auto;min-height:0;padding:16px 14px}
+    .head{flex-direction:column;align-items:flex-start;gap:7px}
+    .hide-s{display:none}
+  }
+</style>
+</head>
+<body>
+
+<div class="controls noprint">
+  <div class="ctl">
+    <label for="season">עונה</label>
+    <select id="season" onchange="build()"></select>
+  </div>
+  <div class="ctl">
+    <label for="view">תצוגה</label>
+    <select id="view" onchange="build()">
+      <option value="list">רשימה לפי שבועות</option>
+      <option value="map">מפת שדה</option>
+      <option value="both">שתיהן</option>
+    </select>
+  </div>
+  <div class="ctl">
+    <label for="noteLines">שורות להערות</label>
+    <input type="number" id="noteLines" value="2" min="0" max="6" onchange="build()">
+  </div>
+  <button onclick="window.print()">🖨️ הדפס</button>
+</div>
+
+<div class="status noprint" id="status"></div>
+<div id="out"></div>
+
+<script>
+const HE_MONTHS=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+const HE_DAYS=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+
+function L(k,d){ try{ return JSON.parse(localStorage.getItem(k)||d);}catch(e){ return JSON.parse(d);} }
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmt(d){ return d.getDate()+' ב'+HE_MONTHS[d.getMonth()]; }
+function fmtFull(d){ return HE_DAYS[d.getDay()]+', '+d.getDate()+' ב'+HE_MONTHS[d.getMonth()]+' '+d.getFullYear(); }
+function setStatus(m){ document.getElementById('status').textContent=m||''; }
+
+/* ── עונות ── */
+function loadSeasons(){
+  const defs=L('plantDefs','[]');
+  const seasons=[...new Set(defs.map(d=>d.season).filter(Boolean))];
+  const sel=document.getElementById('season');
+  sel.innerHTML=seasons.length
+    ? seasons.map(s=>'<option>'+esc(s)+'</option>').join('')
+    : '<option>אין נתונים</option>';
+  return seasons;
+}
+
+/* ── מתי כל משתל מגיע ── */
+function wavesOf(def, seasonStart){
+  const out=[];
+  const waves=Number(def.waves)||1;
+  const interval=Number(def.interval)||0;
+  const startWeek=Number(def.startWeek)||1;
+  for(let w=1;w<=waves;w++){
+    const off=(startWeek-1)+(w-1)*interval;
+    const d=new Date(seasonStart);
+    d.setDate(d.getDate()+off*7);
+    out.push({wave:w,totalWaves:waves,date:d,offsetWeeks:off});
+  }
+  return out;
+}
+
+/* ── איפה גידול משובץ ── */
+function locationsFor(cropName, season){
+  const plan=L('rotationPlan','{}')[season]||{};
+  const hits={};
+  Object.keys(plan).forEach(key=>{
+    const val=plan[key];
+    const segs=Array.isArray(val)?val:(typeof val==='string'?[{crop:val}]:[]);
+    if(!segs.some(s=>String(s.crop||'').trim()===String(cropName).trim())) return;
+    const m=String(key).match(/^(.*)_(\d+)$/);
+    const field=m?m[1].trim():String(key).trim();
+    const bed=m?m[2]:'';
+    (hits[field]=hits[field]||[]).push(bed);
+  });
+  return Object.keys(hits).map(f=>({
+    field:f,
+    beds:hits[f].filter(Boolean).sort((a,b)=>a-b)
+  }));
+}
+
+/* ── בניית העמוד ── */
+function build(){
+  const season=document.getElementById('season').value;
+  const view=document.getElementById('view').value;
+  const noteLines=Math.max(0,Math.min(6,Number(document.getElementById('noteLines').value)||0));
+  const out=document.getElementById('out');
+
+  const defs=L('plantDefs','[]').filter(d=>d.season===season);
+  if(!defs.length){
+    out.innerHTML='<div class="page"><div class="empty-msg"><strong>אין תכנון לעונה הזו</strong>'+
+      'צריך להגדיר גידולים בלשונית ההזמנות באפליקציה.</div></div>';
+    return;
+  }
+
+  const settings=L('settings','{}');
+  const starts=settings.seasonStarts||{};
+  if(!starts[season]){
+    setStatus('לעונה "'+season+'" אין תאריך התחלה בהגדרות, ולכן אי אפשר לחשב שבועות.');
+    out.innerHTML='<div class="page"><div class="empty-msg"><strong>חסר תאריך תחילת עונה</strong>'+
+      'אפשר להגדיר אותו בלשונית ההגדרות באפליקציה.</div></div>';
+    return;
+  }
+  const seasonStart=new Date(starts[season]+'T00:00:00');
+  const species=L('plantSpecies','[]');
+
+  /* קיבוץ לפי שבוע */
+  const byWeek={};
+  defs.forEach(def=>{
+    wavesOf(def,seasonStart).forEach(w=>{
+      (byWeek[w.offsetWeeks]=byWeek[w.offsetWeeks]||[]).push({def:def,w:w});
+    });
+  });
+
+  const weeks=Object.keys(byWeek).map(Number).sort((a,b)=>a-b);
+  setStatus(defs.length+' גידולים, '+weeks.length+' שבועות שתילה.');
+
+  let html='';
+
+  /* ── רשימה ── */
+  if(view==='list'||view==='both'){
+    html+='<div class="page">'+pageHead(season,seasonStart,'תוכנית שתילה');
+    weeks.forEach(wk=>{
+      const d=new Date(seasonStart); d.setDate(d.getDate()+wk*7);
+      const rows=byWeek[wk].slice().sort((a,b)=>a.def.name.localeCompare(b.def.name,'he'));
+
+      html+='<div class="week"><div class="week-bar">'+
+        '<span class="w">שבוע '+(wk+1)+'</span>'+
+        '<span class="d">'+fmtFull(d)+'</span></div>'+
+        '<table><thead><tr>'+
+        '<th>ירק</th><th class="c" style="width:74px">שתילים</th>'+
+        '<th style="width:150px">מיקום</th>'+
+        '<th style="width:130px">אופן שתילה</th>'+
+        '<th>דגשים והערות</th></tr></thead><tbody>';
+
+      rows.forEach(r=>{
+        const def=r.def, w=r.w;
+        const sp=species.find(s=>s.id===def.speciesId)||{};
+        const locs=locationsFor(def.name,season);
+
+        let loc;
+        if(locs.length){
+          loc=locs.map(l=>esc(l.field)+
+            (l.beds.length?' <span class="beds">ע׳ '+l.beds.join(', ')+'</span>':'')).join('<br>');
+        } else if(def.field){
+          loc=esc(def.field)+' <span class="beds">— ערוגה לפי הצורך</span>';
+        } else {
+          loc='<span class="none">—</span>';
+        }
+
+        const how=[
+          def.rows?def.rows+' שורות':'',
+          def.dist?'כל '+def.dist+' ס״מ':'',
+          def.drips?def.drips+' שלוחות':'',
+          sp.type==='seed'?'זריעה':(sp.type==='transplant'?'שתילה':'')
+        ].filter(Boolean).join(' · ');
+
+        const notes=[def.notes,sp.notes].filter(Boolean).join(' · ');
+
+        html+='<tr>'+
+          '<td><div class="crop">'+esc(def.name)+'</div>'+
+            '<div class="wave">משתל '+w.wave+' מתוך '+w.totalWaves+'</div></td>'+
+          '<td class="c"><div class="qty">'+(Number(def.plantsWave)||0).toLocaleString('he-IL')+
+            '<span>שתילים</span></div></td>'+
+          '<td class="loc">'+loc+'</td>'+
+          '<td class="how">'+(how||'—')+'</td>'+
+          '<td class="how">'+esc(notes)+'<div class="notes-line"></div></td>'+
+        '</tr>';
+      });
+
+      html+='</tbody></table>';
+
+      if(noteLines>0){
+        html+='<div class="week-notes"><div class="lbl">הערות לשבוע</div>'+
+          Array(noteLines).fill('<div class="ln"></div>').join('')+'</div>';
+      }
+      html+='</div>';
+    });
+    html+=pageFoot()+'</div>';
+  }
+
+  /* ── מפת שדה ── */
+  if(view==='map'||view==='both'){
+    html+='<div class="page">'+pageHead(season,seasonStart,'מפת שדה');
+
+    const plan=L('rotationPlan','{}')[season]||{};
+    const fields={};
+    Object.keys(plan).forEach(key=>{
+      const m=String(key).match(/^(.*)_(\d+)$/);
+      if(!m) return;
+      const f=m[1].trim(), bed=Number(m[2]);
+      const val=plan[key];
+      const segs=Array.isArray(val)?val:(typeof val==='string'?[{crop:val}]:[]);
+      if(!segs.length) return;
+      (fields[f]=fields[f]||{})[bed]=segs;
+    });
+
+    const fieldNames=Object.keys(fields).sort((a,b)=>a.localeCompare(b,'he'));
+
+    if(!fieldNames.length){
+      html+='<div class="empty-msg"><strong>אין שיבוצים בעונה הזו</strong>'+
+        'אפשר לשבץ גידולים בלשונית הרוטציה.</div>';
+    } else {
+      fieldNames.forEach(f=>{
+        const beds=fields[f];
+        const nums=Object.keys(beds).map(Number).sort((a,b)=>a-b);
+        const maxBed=Math.max.apply(null,nums);
+
+        html+='<div class="map-field"><h3>'+esc(f)+
+          ' <span style="font-size:.74rem;font-weight:400;color:#6a7a6d">'+
+          nums.length+' ערוגות משובצות</span></h3><div class="beds-row">';
+
+        for(let b=1;b<=maxBed;b++){
+          const segs=beds[b];
+          if(!segs){
+            html+='<div class="bed empty"><div class="n">'+b+'</div></div>';
+            continue;
+          }
+          html+='<div class="bed"><div class="n">'+b+'</div>'+
+            segs.map(s=>{
+              const orient=s.orient==='across'?'↔':'↕';
+              return '<div class="c">'+esc(s.crop)+
+                '<em>'+orient+(s.wave&&s.wave>1?' מ'+s.wave:'')+
+                (s.meters?' · '+s.meters+'מ׳':'')+'</em></div>';
+            }).join('')+
+            '</div>';
+        }
+        html+='</div></div>';
+      });
+
+      if(noteLines>0){
+        html+='<div class="week-notes" style="margin-top:16px">'+
+          '<div class="lbl">הערות</div>'+
+          Array(Math.max(3,noteLines)).fill('<div class="ln"></div>').join('')+'</div>';
+      }
+    }
+    html+=pageFoot()+'</div>';
+  }
+
+  out.innerHTML=html;
+}
+
+function pageHead(season,start,title){
+  return '<div class="head"><div><h1>'+title+'</h1>'+
+    '<div class="farm">שלושה ברושים ירוקים</div></div>'+
+    '<div class="meta"><b>'+esc(season)+'</b>'+
+    'תחילת עונה: '+fmt(start)+'</div></div>';
+}
+function pageFoot(){
+  const n=new Date();
+  return '<div class="foot"><span>הודפס '+n.getDate()+'/'+(n.getMonth()+1)+'/'+n.getFullYear()+'</span>'+
+    '<span>↕ לאורך · ↔ לרוחב</span></div>';
+}
+
+/* ── התחלה ── */
+const seasons=loadSeasons();
+if(!L('plantDefs','[]').length){
+  setStatus('לא נמצאו נתונים. צריך לפתוח את הקובץ מאותה כתובת שבה האפליקציה פועלת.');
+  document.getElementById('out').innerHTML=
+    '<div class="page"><div class="empty-msg"><strong>אין נתונים</strong>'+
+    'הקובץ קורא מהאפליקציה, ולכן צריך לפתוח אותו באותו דפדפן ובאותה כתובת.</div></div>';
+} else {
+  build();
+}
+</script>
+</body>
+</html>
