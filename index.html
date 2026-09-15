@@ -2226,25 +2226,25 @@ function saveRotationPlan() {
 /* הפיכת כיוון שתילה של משתל בודד בערוגה */
 function toggleSegmentOrient(fieldName, bedNum, segIdx) {
   var season = document.getElementById('rot-plan-season').value.trim();
-  if (!season || !rotationPlan[season]) return;
+  if (!season) return;
   var key = fieldName + '_' + bedNum;
-  var cell = rotationPlan[season][key];
-  if (!cell || !Array.isArray(cell.segments) || !cell.segments[segIdx]) return;
+  var segs = getBedSegments(rotationPlan[season] && rotationPlan[season][key]);
+  var seg = segs[segIdx];
+  if (!seg) return;
 
   var field = FIELD_DEFS.find(function(f){ return f.name === fieldName; });
-  var seg = cell.segments[segIdx];
-  var sp = plantSpecies.find(function(x){ return x.name === seg.crop; });
-  var isDripBedSp = !!(field && field.drips);
-  var wasAlong = (seg.orient === 'along') || (!seg.orient && isDripBedSp);
+  var isDripBed = !!(field && field.drips);
+  var wasAlong = (seg.orient === 'along') || (!seg.orient && isDripBed);
 
   seg.orient = wasAlong ? 'across' : 'along';
+  rotationPlan[season][key] = segs;
 
-  /* בדיקת מקום אחרי ההיפוך */
-  var totalDrips = (field && field.drips) ? field.drips : 1;
+  /* בדיקת עומס אחרי ההיפוך */
+  var totalDrips = (field && field.drips) ? field.drips : 0;
   var bedLen = (field && field.len) ? field.len : 0;
   var alongDrips = 0, acrossLen = 0;
-  cell.segments.forEach(function(x){
-    var xAlong = (x.orient === 'along') || (!x.orient && isDripBedSp);
+  segs.forEach(function(x){
+    var xAlong = (x.orient === 'along') || (!x.orient && isDripBed);
     var xsp = plantSpecies.find(function(y){ return y.name === x.crop; });
     var xDrips = (xsp && xsp.drips) ? xsp.drips : 1;
     if (xAlong) alongDrips += xDrips;
@@ -2252,17 +2252,17 @@ function toggleSegmentOrient(fieldName, bedNum, segIdx) {
   });
 
   var over = '';
-  if (alongDrips > totalDrips) {
-    over = 'הערוגה עמוסה — ' + alongDrips + ' שלוחות מתוך ' + totalDrips + '.';
+  if (totalDrips && alongDrips > totalDrips) {
+    over = 'הערוגה עמוסה — ' + alongDrips + ' שלוחות מתוך ' + totalDrips;
   } else if (bedLen && acrossLen > bedLen + 0.05) {
-    over = 'הערוגה עמוסה — ' + Math.round(acrossLen) + 'מ׳ מתוך ' + bedLen + 'מ׳.';
+    over = 'הערוגה עמוסה — ' + Math.round(acrossLen) + 'מ׳ מתוך ' + bedLen + 'מ׳';
   }
 
   saveRotationPlan();
   renderRotationPlanner();
 
   if (over) showToast(over, 'err');
-  else showToast(seg.crop + ' — ' + (wasAlong ? 'לרוחב' : 'לאורך'));
+  else showToast(seg.crop + ' — ' + (wasAlong ? 'לרוחב ↔' : 'לאורך ↕'));
 }
 
 function undoRotationPlan() {
