@@ -186,6 +186,21 @@
 <div id="out"></div>
 
 <script>
+const DEFAULT_FIELDS=[
+  { name:'חול ימין',       beds:9,  zone:'חול' },
+  { name:'חול שמאל',      beds:9,  zone:'חול' },
+  { name:'אילנית ימין',    beds:35, zone:'ירוקים', mifteach:5 },
+  { name:'אילנית שמאל',   beds:35, zone:'ירוקים', mifteach:5 },
+  { name:'בז ימין',        beds:6,  zone:'עונתיים' },
+  { name:'בז שמאל',       beds:7,  zone:'עונתיים' },
+  { name:'קיפוד ימין',     beds:9,  zone:'עונתיים' },
+  { name:'קיפוד שמאל',    beds:7,  zone:'עונתיים' },
+  { name:'פתוח ימין',      beds:9,  zone:'עונתיים' },
+  { name:'פתוח שמאל',     beds:9,  zone:'עונתיים' },
+  { name:'ספירלה',         beds:1,  zone:'מיוחד' },
+  { name:'גדר ליד מיכה',  beds:1,  zone:'עונתיים' }
+];
+
 const HE_MONTHS=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
 const HE_DAYS=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
 
@@ -430,15 +445,8 @@ function build(){
 
     /* רשימת החלקות מההגדרות — כולל ריקות, בסדר שלהן */
     const defsList=L('fieldDefs','null');
-    let fieldList;
-    if(Array.isArray(defsList)&&defsList.length){
-      fieldList=defsList.map(f=>({name:f.name,beds:Number(f.beds)||0}));
-    } else {
-      fieldList=Object.keys(placed).map(f=>({
-        name:f,
-        beds:Math.max.apply(null,Object.keys(placed[f]).map(Number))
-      }));
-    }
+    const base=(Array.isArray(defsList)&&defsList.length)?defsList:DEFAULT_FIELDS;
+    let fieldList=base.map(f=>({name:f.name,beds:Number(f.beds)||0,mifteach:f.mifteach}));
 
     /* חלקות שיש בהן שיבוץ אך אינן בהגדרות — נוסיף בסוף כדי לא לאבד מידע */
     Object.keys(placed).forEach(f=>{
