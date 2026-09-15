@@ -157,6 +157,9 @@
     <input type="number" id="noteLines" value="2" min="0" max="6" onchange="build()">
   </div>
   <button onclick="window.print()">🖨️ הדפס</button>
+  <button onclick="sendToSheets(event)">📊 שלח לגיליון</button>
+  <button class="ghost" onclick="copyForSheets()">📋 העתק ידנית</button>
+  <button class="ghost" onclick="downloadCsv()">⬇️ הורד CSV</button>
 </div>
 
 <div class="status noprint" id="status"></div>
@@ -171,6 +174,59 @@ function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,
 function fmt(d){ return d.getDate()+' ב'+HE_MONTHS[d.getMonth()]; }
 function fmtFull(d){ return HE_DAYS[d.getDay()]+', '+d.getDate()+' ב'+HE_MONTHS[d.getMonth()]+' '+d.getFullYear(); }
 function setStatus(m){ document.getElementById('status').textContent=m||''; }
+
+let exportRows=[];
+const EXPORT_HEAD=['שבוע','תאריך','ירק','משתל','שתילים','מיקום','אופן שתילה','דגשים'];
+const SCRIPT_URL='https://script.google.com/macros/s/AKfycbwK_LF4ijmwHcwbbcoMEBcn00fNp7KhE4rlo5H1nUjXUfGn0SFRojaIGb4z7axMy-Gq4A/exec';
+
+function sendToSheets(ev){
+  if(!exportRows.length){ alert('אין נתונים לייצוא'); return; }
+  const season=document.getElementById('season').value;
+  const btn=ev&&ev.target;
+  if(btn){ btn.disabled=true; btn.textContent='שולח...'; }
+
+  fetch(SCRIPT_URL,{
+    method:'POST',
+    body:JSON.stringify({action:'saveSeasonPlan',season:season,rows:exportRows})
+  }).then(()=>{
+    setStatus('נשלח לגיליון — לשונית "תוכנית '+season+'".');
+    if(btn){ btn.disabled=false; btn.textContent='✓ נשלח';
+             setTimeout(()=>{btn.textContent='📊 שלח לגיליון';},2200); }
+  }).catch(err=>{
+    console.error(err);
+    setStatus('השליחה לגיליון נכשלה. אפשר להשתמש בהעתקה ידנית.');
+    if(btn){ btn.disabled=false; btn.textContent='📊 שלח לגיליון'; }
+  });
+}
+
+function copyForSheets(){
+  if(!exportRows.length){ alert('אין נתונים לייצוא'); return; }
+  const tsv=[EXPORT_HEAD].concat(exportRows)
+    .map(r=>r.map(c=>String(c==null?'':c).replace(/\t/g,' ').replace(/\n/g,' ')).join('\t'))
+    .join('\n');
+  navigator.clipboard.writeText(tsv).then(()=>{
+    setStatus('הועתק. אפשר להדביק ישירות בגיליון (Ctrl+V).');
+  }).catch(()=>{
+    const ta=document.createElement('textarea');
+    ta.value=tsv; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); ta.remove();
+    setStatus('הועתק. אפשר להדביק ישירות בגיליון (Ctrl+V).');
+  });
+}
+
+function downloadCsv(){
+  if(!exportRows.length){ alert('אין נתונים לייצוא'); return; }
+  const season=document.getElementById('season').value;
+  const csv=[EXPORT_HEAD].concat(exportRows)
+    .map(r=>r.map(c=>'"'+String(c==null?'':c).replace(/"/g,'""')+'"').join(','))
+    .join('\r\n');
+  const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='תוכנית-'+season+'.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
 
 /* ── עונות ── */
 function loadSeasons(){
@@ -199,13 +255,19 @@ function wavesOf(def, seasonStart){
 }
 
 /* ── איפה גידול משובץ ── */
-function locationsFor(cropName, season){
+function locationsFor(cropName, season, wave){
   const plan=L('rotationPlan','{}')[season]||{};
   const hits={};
   Object.keys(plan).forEach(key=>{
     const val=plan[key];
     const segs=Array.isArray(val)?val:(typeof val==='string'?[{crop:val}]:[]);
-    if(!segs.some(s=>String(s.crop||'').trim()===String(cropName).trim())) return;
+    const match=segs.some(s=>{
+      if(String(s.crop||'').trim()!==String(cropName).trim()) return false;
+      if(wave==null) return true;
+      const sw=Number(s.wave)||1;      /* משתל לא מסומן נחשב ראשון */
+      return sw===wave;
+    });
+    if(!match) return;
     const m=String(key).match(/^(.*)_(\d+)$/);
     const field=m?m[1].trim():String(key).trim();
     const bed=m?m[2]:'';
@@ -254,6 +316,7 @@ function build(){
   setStatus(defs.length+' גידולים, '+weeks.length+' שבועות שתילה.');
 
   let html='';
+  exportRows=[];
 
   /* ── רשימה ── */
   if(view==='list'||view==='both'){
@@ -274,7 +337,7 @@ function build(){
       rows.forEach(r=>{
         const def=r.def, w=r.w;
         const sp=species.find(s=>s.id===def.speciesId)||{};
-        const locs=locationsFor(def.name,season);
+        const locs=locationsFor(def.name,season,w.wave);
 
         let loc;
         if(locs.length){
@@ -294,6 +357,14 @@ function build(){
         ].filter(Boolean).join(' · ');
 
         const notes=[def.notes,sp.notes].filter(Boolean).join(' · ');
+
+        exportRows.push([
+          'שבוע '+(wk+1), fmtFull(d), def.name, w.wave+'/'+w.totalWaves,
+          Number(def.plantsWave)||0,
+          locs.length ? locs.map(l=>l.field+(l.beds.length?' ע׳ '+l.beds.join(', '):'')).join(' ; ')
+                      : (def.field||''),
+          how||'', notes||''
+        ]);
 
         html+='<tr>'+
           '<td><div class="crop">'+esc(def.name)+'</div>'+
