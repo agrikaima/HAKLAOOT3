@@ -103,16 +103,22 @@
   .map-field{margin-top:13px;page-break-inside:avoid}
   .map-field h3{font-family:'Frank Ruhl Libre',serif;font-size:1rem;font-weight:700;
                 background:var(--faint);padding:4px 9px;border-right:4px solid var(--field)}
-  .beds-row{display:flex;flex-wrap:wrap;gap:3px;margin-top:5px}
+  .beds-row{display:flex;flex-wrap:wrap;gap:3px;margin-top:5px;align-items:stretch;direction:ltr}
   .bed{
-    flex:1 1 0;min-width:52px;border:1px solid var(--rule);border-radius:3px;
-    padding:4px 3px;min-height:56px;display:flex;flex-direction:column;
+    flex:0 0 auto;width:34mm;border:1px solid var(--rule);border-radius:3px;
+    padding:4px 4px 5px;min-height:20mm;display:flex;flex-direction:column;
   }
   .bed .n{font-size:.62rem;color:#8a968c;font-weight:700;text-align:center;
           border-bottom:1px solid #eef0ec;padding-bottom:2px;margin-bottom:3px}
-  .bed .c{font-size:.66rem;line-height:1.3;text-align:center;font-weight:500}
+  .bed .c{font-size:.68rem;line-height:1.35;text-align:center;font-weight:500;
+          margin-bottom:2px}
   .bed .c em{display:block;font-style:normal;color:#6a7a6d;font-size:.6rem}
-  .bed.empty{background:#fafbfa}
+  .bed.empty{background:#fafbfa;min-height:12mm}
+
+  /* ── ערוגות לאורך: רצועות צרות וגבוהות ── */
+  .beds-row.tall .bed{width:17mm;min-height:44mm}
+  .beds-row.tall .bed .c{font-size:.62rem;line-height:1.25;word-break:break-word}
+  .beds-row.tall .bed.empty{min-height:44mm}
 
   .foot{margin-top:16px;padding-top:9px;border-top:1px solid var(--rule);
         font-size:.7rem;color:#8a968c;display:flex;justify-content:space-between}
@@ -153,6 +159,13 @@
     </select>
   </div>
   <div class="ctl">
+    <label for="bedShape">צורת ערוגות במפה</label>
+    <select id="bedShape" onchange="build()">
+      <option value="tall">לאורך — רצועות צרות</option>
+      <option value="wide">לרוחב — תאים רחבים</option>
+    </select>
+  </div>
+  <div class="ctl">
     <label for="noteLines">שורות להערות</label>
     <input type="number" id="noteLines" value="2" min="0" max="6" onchange="build()">
   </div>
@@ -173,6 +186,7 @@ function L(k,d){ try{ return JSON.parse(localStorage.getItem(k)||d);}catch(e){ r
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function fmt(d){ return d.getDate()+' ב'+HE_MONTHS[d.getMonth()]; }
 function fmtFull(d){ return HE_DAYS[d.getDay()]+', '+d.getDate()+' ב'+HE_MONTHS[d.getMonth()]+' '+d.getFullYear(); }
+function fmtNum(d){ return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear(); }
 function setStatus(m){ document.getElementById('status').textContent=m||''; }
 
 let exportRows=[];
@@ -284,6 +298,7 @@ function build(){
   const season=document.getElementById('season').value;
   const view=document.getElementById('view').value;
   const noteLines=Math.max(0,Math.min(6,Number(document.getElementById('noteLines').value)||0));
+  const bedShape=document.getElementById('bedShape').value;
   const out=document.getElementById('out');
 
   const defs=L('plantDefs','[]').filter(d=>d.season===season);
@@ -359,7 +374,7 @@ function build(){
         const notes=[def.notes,sp.notes].filter(Boolean).join(' · ');
 
         exportRows.push([
-          'שבוע '+(wk+1), fmtFull(d), def.name, w.wave+'/'+w.totalWaves,
+          'שבוע '+(wk+1), fmtNum(d), def.name, w.wave+'/'+w.totalWaves,
           Number(def.plantsWave)||0,
           locs.length ? locs.map(l=>l.field+(l.beds.length?' ע׳ '+l.beds.join(', '):'')).join(' ; ')
                       : (def.field||''),
@@ -417,7 +432,7 @@ function build(){
 
         html+='<div class="map-field"><h3>'+esc(f)+
           ' <span style="font-size:.74rem;font-weight:400;color:#6a7a6d">'+
-          nums.length+' ערוגות משובצות</span></h3><div class="beds-row">';
+          nums.length+' ערוגות משובצות</span></h3><div class="beds-row '+bedShape+'">';
 
         for(let b=1;b<=maxBed;b++){
           const segs=beds[b];
