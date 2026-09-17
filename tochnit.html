@@ -261,21 +261,31 @@ function bedUsage(fieldName, bedNum, season, defs){
   const segs=Array.isArray(val)?val:(typeof val==='string'?[{crop:val}]:[]);
   if(!segs.length) return null;
 
-  let alongDrips=0, acrossLen=0;
+  /* סך המטרים בערוגה = אורך × שלוחות */
+  const totalM=f.len*f.drips;
+
+  let usedM=0, alongDrips=0;
   segs.forEach(sg=>{
-    const sDef=defs.find(d=>d.name===sg.crop);
-    const isAlong=(sg.orient==='along')||(!sg.orient);
-    if(isAlong) alongDrips+=(sDef&&sDef.drips)?Number(sDef.drips):0;
-    else acrossLen+=(sg.meters||0)/f.drips;
+    if(sg.meters){
+      /* מה שנשמר ברוטציה הוא כבר מטרי שלוחה */
+      usedM+=Number(sg.meters);
+    } else {
+      /* אין ערך שמור — מעריכים לפי השלוחות שהגידול תופס */
+      const sDef=defs.find(d=>d.name===sg.crop);
+      const dr=(sDef&&sDef.drips)?Number(sDef.drips):0;
+      usedM+=dr*f.len;
+    }
+    const sDef2=defs.find(d=>d.name===sg.crop);
+    if((sg.orient==='along')||(!sg.orient)) alongDrips+=(sDef2&&sDef2.drips)?Number(sDef2.drips):0;
   });
 
-  const totalM=f.len*f.drips;
-  const usedM=alongDrips*f.len + acrossLen*f.drips;
+  if(usedM>totalM) usedM=totalM;   /* לא יותר ממה שיש */
+
   return {
     drips:f.drips, len:f.len,
-    usedDrips:alongDrips, freeDrips:f.drips-alongDrips,
+    usedDrips:Math.min(alongDrips,f.drips), freeDrips:Math.max(0,f.drips-alongDrips),
     totalM:Math.round(totalM), usedM:Math.round(usedM),
-    freeM:Math.round(totalM-usedM)
+    freeM:Math.round(Math.max(0,totalM-usedM))
   };
 }
 
