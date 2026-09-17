@@ -92,6 +92,9 @@
   .loc{line-height:1.4}
   .loc .beds{color:#6a7a6d;font-size:.74rem}
   .loc .none{color:#a8b3a9}
+  .cap{font-size:.7rem;color:#6a7a6d;margin-top:2px;line-height:1.35}
+  .cap .free{color:#3f6b4a;font-weight:700}
+  .calc{font-size:.72rem;color:#3f6b4a;font-weight:700;margin-top:2px}
   .how{font-size:.76rem;color:#54634f;line-height:1.45}
   .notes-line{border-bottom:1px dotted #b3bdb4;height:15px;margin-top:3px}
 
@@ -187,18 +190,18 @@
 
 <script>
 const DEFAULT_FIELDS=[
-  { name:'חול ימין',       beds:9,  zone:'חול' },
-  { name:'חול שמאל',      beds:9,  zone:'חול' },
-  { name:'אילנית ימין',    beds:35, zone:'ירוקים', mifteach:5 },
-  { name:'אילנית שמאל',   beds:35, zone:'ירוקים', mifteach:5 },
-  { name:'בז ימין',        beds:6,  zone:'עונתיים' },
-  { name:'בז שמאל',       beds:7,  zone:'עונתיים' },
-  { name:'קיפוד ימין',     beds:9,  zone:'עונתיים' },
-  { name:'קיפוד שמאל',    beds:7,  zone:'עונתיים' },
-  { name:'פתוח ימין',      beds:9,  zone:'עונתיים' },
-  { name:'פתוח שמאל',     beds:9,  zone:'עונתיים' },
-  { name:'ספירלה',         beds:1,  zone:'מיוחד' },
-  { name:'גדר ליד מיכה',  beds:1,  zone:'עונתיים' }
+  { name:'חול ימין',       beds:9,  len:21,  drips:3 },
+  { name:'חול שמאל',      beds:9,  len:15,  drips:3 },
+  { name:'אילנית ימין',    beds:35, len:10,  drips:3, mifteach:5 },
+  { name:'אילנית שמאל',   beds:35, len:14,  drips:3, mifteach:5 },
+  { name:'בז ימין',        beds:6,  len:30,  drips:4 },
+  { name:'בז שמאל',       beds:7,  len:30,  drips:4 },
+  { name:'קיפוד ימין',     beds:9,  len:30,  drips:4 },
+  { name:'קיפוד שמאל',    beds:7,  len:30,  drips:4 },
+  { name:'פתוח ימין',      beds:9,  len:45,  drips:4 },
+  { name:'פתוח שמאל',     beds:9,  len:45,  drips:4 },
+  { name:'ספירלה',         beds:1,  len:15,  drips:3 },
+  { name:'גדר ליד מיכה',  beds:1,  len:130, drips:3 }
 ];
 
 const HE_MONTHS=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
@@ -210,6 +213,50 @@ function fmt(d){ return d.getDate()+' ב'+HE_MONTHS[d.getMonth()]; }
 function fmtFull(d){ return HE_DAYS[d.getDay()]+', '+d.getDate()+' ב'+HE_MONTHS[d.getMonth()]+' '+d.getFullYear(); }
 function fmtNum(d){ return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear(); }
 function setStatus(m){ document.getElementById('status').textContent=m||''; }
+
+function fieldDef(name){
+  const saved=L('fieldDefs','null');
+  const list=(Array.isArray(saved)&&saved.length)?saved:DEFAULT_FIELDS;
+  return list.find(f=>f.name===name)||null;
+}
+
+/* כמה צמחים נכנסים במטר שלוחה */
+function perMeter(def){
+  const rows=Number(def.rows)||1;
+  const dist=Number(def.dist)||0;
+  if(!dist) return 0;
+  return rows*(100/dist);          /* ערך מדויק, בלי עיגול */
+}
+function fmtPM(n){
+  return Number.isInteger(n) ? String(n) : String(Math.round(n*100)/100);
+}
+
+/* תפוסה של ערוגה: כמה שלוחות ומטרים תפוסים, לפי אותה שיטה שבאפליקציה */
+function bedUsage(fieldName, bedNum, season, defs){
+  const f=fieldDef(fieldName);
+  if(!f||!f.drips) return null;
+  const plan=L('rotationPlan','{}')[season]||{};
+  const val=plan[fieldName+'_'+bedNum];
+  const segs=Array.isArray(val)?val:(typeof val==='string'?[{crop:val}]:[]);
+  if(!segs.length) return null;
+
+  let alongDrips=0, acrossLen=0;
+  segs.forEach(sg=>{
+    const sDef=defs.find(d=>d.name===sg.crop);
+    const isAlong=(sg.orient==='along')||(!sg.orient);
+    if(isAlong) alongDrips+=(sDef&&sDef.drips)?Number(sDef.drips):0;
+    else acrossLen+=(sg.meters||0)/f.drips;
+  });
+
+  const totalM=f.len*f.drips;
+  const usedM=alongDrips*f.len + acrossLen*f.drips;
+  return {
+    drips:f.drips, len:f.len,
+    usedDrips:alongDrips, freeDrips:f.drips-alongDrips,
+    totalM:Math.round(totalM), usedM:Math.round(usedM),
+    freeM:Math.round(totalM-usedM)
+  };
+}
 
 let exportRows=[];
 const EXPORT_HEAD=['שבוע','תאריך','ירק','משתל','שתילים','מיקום','אופן שתילה','דגשים'];
@@ -376,10 +423,26 @@ function build(){
         const sp=species.find(s=>s.id===def.speciesId)||{};
         const locs=locationsFor(def.name,season,w.wave);
 
+        const pm=perMeter(def);
+        const plants=Number(def.plantsWave)||0;
+        const needM=pm?Math.round(plants/pm):0;
+
         let loc;
         if(locs.length){
-          loc=locs.map(l=>esc(l.field)+
-            (l.beds.length?' <span class="beds">ע׳ '+l.beds.join(', ')+'</span>':'')).join('<br>');
+          loc=locs.map(l=>{
+            let t=esc(l.field);
+            if(l.beds.length) t+=' <span class="beds">ע׳ '+l.beds.join(', ')+'</span>';
+            /* תפוסה של הערוגה הראשונה — מייצגת */
+            const u=l.beds.length?bedUsage(l.field,Number(l.beds[0]),season,defs):null;
+            if(u){
+              t+='<div class="cap">'+
+                 u.usedDrips+' מתוך '+u.drips+' של׳ · '+
+                 u.usedM+' מתוך '+u.totalM+'מ׳'+
+                 (u.freeM>0?'<br><span class="free">נותרו '+u.freeM+'מ׳</span>':'')+
+                 '</div>';
+            }
+            return t;
+          }).join('<br>');
         } else if(def.field){
           loc=esc(def.field)+' <span class="beds">— ערוגה לפי הצורך</span>';
         } else {
@@ -387,11 +450,11 @@ function build(){
         }
 
         const how=[
-          def.rows?def.rows+' שורות':'',
-          def.dist?'כל '+def.dist+' ס״מ':'',
-          def.drips?def.drips+' שלוחות':'',
+          def.rows?(Number(def.rows)===1?'שורה אחת לשלוחה':def.rows+' שורות לשלוחה'):'',
+          pm?fmtPM(pm)+' למ׳':'',
           sp.type==='seed'?'זריעה':(sp.type==='transplant'?'שתילה':'')
-        ].filter(Boolean).join(' · ');
+        ].filter(Boolean).join(' · ')+
+        (needM?'<div class="calc">'+plants.toLocaleString('he-IL')+' = '+needM+'מ׳ שלוחה</div>':'');
 
         const notes=[def.notes,sp.notes].filter(Boolean).join(' · ');
 
@@ -400,7 +463,7 @@ function build(){
           Number(def.plantsWave)||0,
           locs.length ? locs.map(l=>l.field+(l.beds.length?' ע׳ '+l.beds.join(', '):'')).join(' ; ')
                       : (def.field||''),
-          how||'', notes||''
+          how.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim(), notes||''
         ]);
 
         html+='<tr>'+
