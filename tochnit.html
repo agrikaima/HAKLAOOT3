@@ -95,6 +95,7 @@
   .cap{font-size:.7rem;color:#6a7a6d;margin-top:2px;line-height:1.35}
   .cap .free{color:#3f6b4a;font-weight:700}
   .calc{font-size:.72rem;color:#3f6b4a;font-weight:700;margin-top:2px}
+  .alt{font-size:.72rem;color:#b0521e;font-weight:700;margin-top:3px}
   .how{font-size:.76rem;color:#54634f;line-height:1.45}
   .notes-line{border-bottom:1px dotted #b3bdb4;height:15px;margin-top:3px}
 
@@ -242,11 +243,20 @@ function fieldDef(name){
 }
 
 /* כמה צמחים נכנסים במטר שלוחה */
-function perMeter(def){
-  const rows=Number(def.rows)||1;
-  const dist=Number(def.dist)||0;
-  if(!dist) return 0;
-  return rows*(100/dist);          /* ערך מדויק, בלי עיגול */
+/* הצפיפות נלקחת מקטלוג הירקות (sp), כמו באפליקציה:
+   sp.rows = שורות לשלוחה, sp.shoots = שלוחות, sp.dist = מרווח */
+function density(def, sp){
+  const rows=Number((sp&&sp.rows)||def.rows)||1;
+  const dist=Number((sp&&sp.dist)||def.dist)||0;
+  const shoots=Number((sp&&sp.shoots)||def.drips)||0;
+  return { rows:rows, dist:dist, shoots:shoots,
+           perM: dist ? rows*(100/dist) : 0 };
+}
+
+/* ירקות שנשתלים שלוחה כן שלוחה לא */
+const ALTERNATING=['כרובית','כרוב','ברוקולי'];
+function isAlternating(name){
+  return ALTERNATING.some(w=>String(name||'').indexOf(w)>-1);
 }
 function fmtPM(n){
   return Number.isInteger(n) ? String(n) : String(Math.round(n*100)/100);
@@ -290,7 +300,7 @@ function bedUsage(fieldName, bedNum, season, defs){
 }
 
 let exportRows=[];
-const EXPORT_HEAD=['שבוע','תאריך','ירק','משתל','שתילים','מיקום','אופן שתילה','דגשים'];
+const EXPORT_HEAD=['שבוע','תאריך','ירק','משתל','שתיל','מיקום','אופן שתילה','דגשים'];
 const SCRIPT_URL='https://script.google.com/macros/s/AKfycbwK_LF4ijmwHcwbbcoMEBcn00fNp7KhE4rlo5H1nUjXUfGn0SFRojaIGb4z7axMy-Gq4A/exec';
 
 function sendToSheets(ev){
@@ -444,7 +454,7 @@ function build(){
         '<span class="w">שבוע '+(wk+1)+'</span>'+
         '<span class="d">'+fmtFull(d)+'</span></div>'+
         '<table><thead><tr>'+
-        '<th>ירק</th><th class="c" style="width:74px">שתילים</th>'+
+        '<th>ירק</th><th class="c" style="width:74px">שתיל</th>'+
         '<th style="width:150px">מיקום</th>'+
         '<th style="width:130px">אופן שתילה</th>'+
         '<th>דגשים והערות</th></tr></thead><tbody>';
@@ -454,7 +464,8 @@ function build(){
         const sp=species.find(s=>s.id===def.speciesId)||{};
         const locs=locationsFor(def.name,season,w.wave);
 
-        const pm=perMeter(def);
+        const den=density(def,sp);
+        const pm=den.perM;
         const plants=Number(def.plantsWave)||0;
         const needM=pm?Math.round(plants/pm):0;
 
@@ -478,12 +489,16 @@ function build(){
           loc='<span class="none">—</span>';
         }
 
+        /* אופן השתילה מתואר תמיד ביחס לשלוחה אחת — זו צפיפות הירק, ולא תלוי בשיבוץ */
         const how=[
-          def.rows?(Number(def.rows)===1?'שורה אחת לשלוחה':def.rows+' שורות לשלוחה'):'',
+          '1 שלוחה',
+          den.rows+' שורות',
+          den.dist?'כל '+den.dist+' ס״מ':'',
           pm?fmtPM(pm)+' למ׳':'',
           sp.type==='seed'?'זריעה':(sp.type==='transplant'?'שתילה':'')
         ].filter(Boolean).join(' · ')+
-        (needM?'<div class="calc">'+plants.toLocaleString('he-IL')+' = '+needM+'מ׳ שלוחה</div>':'');
+        (needM?'<div class="calc">'+plants.toLocaleString('he-IL')+' שתיל = '+needM+'מ׳ שלוחה</div>':'')+
+        (isAlternating(def.name)?'<div class="alt">⚠ שלוחה כן, שלוחה לא — לסירוגין</div>':'');
 
         const notes=[def.notes,sp.notes].filter(Boolean).join(' · ');
 
@@ -492,14 +507,15 @@ function build(){
           Number(def.plantsWave)||0,
           locs.length ? locs.map(l=>l.field+(l.beds.length?' ע׳ '+l.beds.join(', '):'')).join(' ; ')
                       : (def.field||''),
-          how.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim(), notes||''
+          how.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim(),
+          [isAlternating(def.name)?'שלוחה כן שלוחה לא':'', notes].filter(Boolean).join(' · ')
         ]);
 
         html+='<tr>'+
           '<td><div class="crop">'+esc(def.name)+'</div>'+
             '<div class="wave">משתל '+w.wave+' מתוך '+w.totalWaves+'</div></td>'+
           '<td class="c"><div class="qty">'+(Number(def.plantsWave)||0).toLocaleString('he-IL')+
-            '<span>שתילים</span></div></td>'+
+            '<span>שתיל</span></div></td>'+
           '<td class="loc">'+loc+'</td>'+
           '<td class="how">'+(how||'—')+'</td>'+
           '<td class="how">'+esc(notes)+'<div class="notes-line"></div></td>'+
