@@ -108,7 +108,7 @@
                 background:var(--faint);padding:4px 9px;border-right:4px solid var(--field)}
   .beds-row{display:flex;flex-wrap:wrap;gap:3px;margin-top:5px;align-items:stretch;direction:ltr}
   .bed{
-    flex:0 0 auto;width:34mm;border:1px solid var(--rule);border-radius:3px;
+    direction:rtl;flex:0 0 auto;width:34mm;border:1px solid var(--rule);border-radius:3px;
     padding:4px 4px 5px;min-height:20mm;display:flex;flex-direction:column;
   }
   .bed .n{font-size:.62rem;color:#8a968c;font-weight:700;text-align:center;
@@ -116,6 +116,7 @@
   .bed .c{font-size:.68rem;line-height:1.35;text-align:center;font-weight:500;
           margin-bottom:2px}
   .bed .c em{display:block;font-style:normal;color:#6a7a6d;font-size:.6rem}
+  .bed .c .dt{display:block;font-size:.6rem;color:#3f6b4a;font-weight:700}
   .bed.empty{background:#fafbfa;min-height:12mm}
 
   /* ── ערוגות לאורך: רצועות צרות וגבוהות ── */
@@ -213,6 +214,26 @@ function fmt(d){ return d.getDate()+' ב'+HE_MONTHS[d.getMonth()]; }
 function fmtFull(d){ return HE_DAYS[d.getDay()]+', '+d.getDate()+' ב'+HE_MONTHS[d.getMonth()]+' '+d.getFullYear(); }
 function fmtNum(d){ return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear(); }
 function setStatus(m){ document.getElementById('status').textContent=m||''; }
+
+/* תאריך ההגעה של משתל: ידני אם נקבע, אחרת מחושב מהתכנון */
+function waveDate(fieldName, bedNum, seg, season, defs, seasonStart){
+  const manual=(L('rotationDelivery','{}')[season]||{})[fieldName+'_'+bedNum];
+  if(manual) return manual;
+  const def=defs.find(d=>d.name===seg.crop);
+  if(!def) return '';
+  const startWeek=Number(def.startWeek)||1;
+  const interval=Number(def.interval)||0;
+  const wv=Number(seg.wave)||1;
+  const d=new Date(seasonStart);
+  d.setDate(d.getDate()+((startWeek-1)+(wv-1)*interval)*7);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function shortDate(iso){
+  if(!iso) return '';
+  const p=String(iso).split('-');
+  if(p.length!==3) return iso;
+  return p[2]+'/'+p[1];
+}
 
 function fieldDef(name){
   const saved=L('fieldDefs','null');
@@ -435,10 +456,8 @@ function build(){
             /* תפוסה של הערוגה הראשונה — מייצגת */
             const u=l.beds.length?bedUsage(l.field,Number(l.beds[0]),season,defs):null;
             if(u){
-              t+='<div class="cap">'+
-                 u.usedDrips+' מתוך '+u.drips+' של׳ · '+
-                 u.usedM+' מתוך '+u.totalM+'מ׳'+
-                 (u.freeM>0?'<br><span class="free">נותרו '+u.freeM+'מ׳</span>':'')+
+              t+='<div class="cap">נשתל '+u.usedM+'מ׳ מתוך '+u.totalM+'מ׳'+
+                 (u.freeM>0?' · <span class="free">נותרו '+u.freeM+'מ׳</span>':'')+
                  '</div>';
             }
             return t;
@@ -543,9 +562,12 @@ function build(){
           html+='<div class="bed"><div class="n">'+b+'</div>'+
             segs.map(s=>{
               const orient=s.orient==='across'?'↔':'↕';
+              const dt=shortDate(waveDate(f.name,b,s,season,defs,seasonStart));
               return '<div class="c">'+esc(s.crop)+
-                '<em>'+orient+(s.wave&&s.wave>1?' מ'+s.wave:'')+
-                (s.meters?' · '+s.meters+'מ׳':'')+'</em></div>';
+                '<em>'+orient+' מ'+(s.wave||1)+
+                (s.meters?' · '+s.meters+'מ׳':'')+'</em>'+
+                (dt?'<span class="dt">📦 '+dt+'</span>':'')+
+                '</div>';
             }).join('')+
             '</div>';
         }
