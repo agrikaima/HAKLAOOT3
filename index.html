@@ -185,6 +185,8 @@
 
     /* rotation planner */
     .rot-bed-cell{border-radius:7px;padding:5px 6px;border:1.5px solid var(--border);background:#fff;min-width:0;transition:transform .1s}
+    .rot-bed-cell.bed-idle{border:2px solid #111827}
+    .rot-bed-cell.bed-overdue{border:2px solid #d97706;box-shadow:0 0 0 2px #fde68a inset}
     .rot-bed-cell.rot-conflict{border-color:var(--red);background:#fef2f2}
     .rot-bed-cell.rot-warn{border-color:var(--amber);background:#fffbeb}
     .rot-bed-cell.rot-painted{border-width:2.5px;color:#fff}
@@ -1565,6 +1567,7 @@ let plantDefs      = JSON.parse(localStorage.getItem('plantDefs')      || '[]');
 })();
 let _rotPaintCrop   = null;
 let _rotPaintWave   = 1;
+var ROT_OVERDUE_DAYS = 7;   /* אחרי כמה ימים לסמן ערוגה שלא עודכנה */
 let _rotPaintOrient = 'along'; // 'along' = לאורך (שלוחות מלאות), 'across' = לרוחב (רוחב מלא, אורך חלקי)
 const _rotCropColors = {};
 const CROP_PALETTE = ['#16a34a','#7c3aed','#0891b2','#b45309','#ea580c','#be123c','#0d9488','#4d7c0f','#1d4ed8','#9a3412','#6b21a8','#0369a1'];
@@ -2226,6 +2229,116 @@ function saveRotationPlan() {
   localStorage.setItem('rotationPlan', JSON.stringify(rotationPlan));
   _updateUndoBtn();
 }
+/* ══════ מעקב משתלים בערוגה ══════ */
+
+function _segOf(fieldName, bedNum, segIdx) {
+  var season = document.getElementById('rot-plan-season').value.trim();
+  if (!season) return null;
+  var segs = getBedSegments(rotationPlan[season] && rotationPlan[season][fieldName + '_' + bedNum]);
+  if (!segs[segIdx]) return null;
+  return { season: season, key: fieldName + '_' + bedNum, segs: segs, seg: segs[segIdx] };
+}
+function _saveSegs(ctx) {
+  rotationPlan[ctx.season][ctx.key] = ctx.segs;
+  saveRotationPlan();
+  renderRotationPlanner();
+}
+
+/* מצב המשתל: ממתין → הגיע → לא הגיע */
+function cycleSegStatus(fieldName, bedNum, segIdx) {
+  var c = _segOf(fieldName, bedNum, segIdx); if (!c) return;
+  var cur = c.seg.status || 'waiting';
+  c.seg.status = cur === 'waiting' ? 'arrived' : (cur === 'arrived' ? 'missed' : 'waiting');
+  if (c.seg.status !== 'missed') delete c.seg.missReason;
+  _saveSegs(c);
+  showToast(c.seg.crop + ' — ' + (c.seg.status==='arrived'?'הגיע':(c.seg.status==='missed'?'לא הגיע':'ממתין')));
+}
+
+function saveSegMissReason(fieldName, bedNum, segIdx, text) {
+  var c = _segOf(fieldName, bedNum, segIdx); if (!c) return;
+  text = (text||'').trim();
+  if (text) c.seg.missReason = text; else delete c.seg.missReason;
+  _saveSegs(c);
+}
+
+/* תאריך שתילה בפועל — יוצר גם רשומה במלאכת ערוגות */
+function saveSegPlanted(fieldName, bedNum, segIdx, dateVal) {
+  var c = _segOf(fieldName, bedNum, segIdx); if (!c) return;
+  var had = c.seg.plantedDate;
+  if (dateVal) c.seg.plantedDate = dateVal; else delete c.seg.plantedDate;
+  if (dateVal && !c.seg.status) c.seg.status = 'arrived';
+  _saveSegs(c);
+
+  if (dateVal && dateVal !== had) {
+    var exists = plantings.some(function(p){
+      return p.recType === 'plant' && p.field === fieldName &&
+             String(p.bed) === String(bedNum) && p.variety === c.seg.crop &&
+             p.date === dateVal;
+    });
+    if (!exists) {
+      plantings.unshift({
+        id: Date.now(),
+        recType: 'plant',
+        season: c.season,
+        date: dateVal,
+        field: fieldName,
+        bed: String(bedNum),
+        variety: c.seg.crop,
+        qty: '', rows: '', shoots: '', distPlant: '',
+        notes: 'נוצר מהרוטציה' + (c.seg.wave ? ' · משתל ' + c.seg.wave : ''),
+        log: [], synced: false,
+        createdAt: new Date().toISOString()
+      });
+      save();
+      if (typeof renderList === 'function') renderList();
+      showToast('נרשם במלאכת ערוגות');
+    }
+  }
+}
+
+/* ימי גידול — מוחל על כל המופעים של אותו ירק בעונה */
+function saveSegGrowDays(fieldName, bedNum, segIdx, val) {
+  var c = _segOf(fieldName, bedNum, segIdx); if (!c) return;
+  var d = parseInt(val, 10);
+  var crop = c.seg.crop;
+  var n = 0;
+  Object.keys(rotationPlan[c.season] || {}).forEach(function(k){
+    var arr = getBedSegments(rotationPlan[c.season][k]);
+    var changed = false;
+    arr.forEach(function(sg){
+      if (sg.crop === crop) {
+        if (d > 0) sg.growDays = d; else delete sg.growDays;
+        changed = true; n++;
+      }
+    });
+    if (changed) rotationPlan[c.season][k] = arr;
+  });
+  saveRotationPlan();
+  renderRotationPlanner();
+  if (d > 0 && n > 1) showToast(crop + ' — ' + d + ' ימים, הוחל על ' + n + ' משתלים');
+}
+
+/* תאריך קטיף צפוי */
+function _harvestDate(seg) {
+  if (!seg.plantedDate || !seg.growDays) return '';
+  var d = new Date(seg.plantedDate + 'T00:00:00');
+  d.setDate(d.getDate() + Number(seg.growDays));
+  return d.getDate() + '/' + (d.getMonth()+1);
+}
+
+/* מעבר למלאכת ערוגות עם סינון לערוגה */
+function openBedLog(fieldName, bedNum) {
+  switchTab('beds');
+  setTimeout(function(){
+    var box = document.getElementById('searchInput');
+    if (box) {
+      box.value = fieldName;
+      if (typeof renderList === 'function') renderList();
+    }
+    showToast(fieldName + ' · ערוגה ' + bedNum);
+  }, 150);
+}
+
 /* הפיכת כיוון שתילה של משתל בודד בערוגה */
 function toggleSegmentOrient(fieldName, bedNum, segIdx) {
   var season = document.getElementById('rot-plan-season').value.trim();
@@ -2731,7 +2844,50 @@ function _renderRotationPlannerInner() {
           +'onclick="event.stopPropagation()" '
           +'style="display:none;width:100%;font-size:.6rem;padding:2px 4px;border:1px solid #c4b5fd;border-radius:4px;direction:rtl;margin-top:1px;box-sizing:border-box" '
           +'onblur="saveBedSegmentNote(\''+safeField+'\','+i+','+si+',this.value)" '
-          +'onkeydown="if(event.key===\'Enter\'||event.key===\'Escape\')this.blur()">';
+          +'onkeydown="if(event.key===\'Enter\'||event.key===\'Escape\')this.blur()">'
+
+          /* ── מעקב המשתל ── */
+          +(function(){
+             var st = s.status || 'waiting';
+             var map = {
+               waiting: { ic:'⏳', t:'ממתין',   bg:'#f3f4f6', fg:'#6b7280' },
+               arrived: { ic:'✅', t:'הגיע',    bg:'#dcfce7', fg:'#15803d' },
+               missed:  { ic:'❌', t:'לא הגיע', bg:'#fee2e2', fg:'#b91c1c' }
+             };
+             var m = map[st];
+             var hv = _harvestDate(s);
+             var out = '<div style="display:flex;align-items:center;gap:3px;flex-wrap:wrap;margin-top:2px;padding-right:9px">';
+
+             out += '<span onclick="event.stopPropagation();cycleSegStatus(\''+safeField+'\','+i+','+si+')" '
+                 +'style="cursor:pointer;background:'+m.bg+';color:'+m.fg+';font-size:.58rem;font-weight:700;'
+                 +'border-radius:4px;padding:1px 5px;flex-shrink:0" title="לחצי לשינוי מצב">'+m.ic+' '+m.t+'</span>';
+
+             out += '<input type="date" value="'+escAttr(s.plantedDate||'')+'" onclick="event.stopPropagation()" '
+                 +'title="תאריך שתילה בפועל" '
+                 +'style="font-size:.55rem;padding:0 2px;border:1px solid #d1d5db;border-radius:3px;width:78px" '
+                 +'onchange="saveSegPlanted(\''+safeField+'\','+i+','+si+',this.value)">';
+
+             out += '<input type="number" min="0" value="'+escAttr(s.growDays||'')+'" placeholder="ימים" '
+                 +'onclick="event.stopPropagation()" title="ימי גידול עד קטיף" '
+                 +'style="font-size:.55rem;padding:0 2px;border:1px solid #d1d5db;border-radius:3px;width:42px" '
+                 +'onchange="saveSegGrowDays(\''+safeField+'\','+i+','+si+',this.value)">';
+
+             if (hv) out += '<span style="font-size:.58rem;color:#b45309;font-weight:700">🧺 '+hv+'</span>';
+
+             out += '</div>';
+
+             if (st === 'missed') {
+               out += '<input type="text" value="'+escAttr(s.missReason||'')+'" placeholder="למה לא הגיע?" '
+                   +'onclick="event.stopPropagation()" '
+                   +'style="width:calc(100% - 9px);margin-right:9px;font-size:.58rem;padding:1px 4px;'
+                   +'border:1px solid #fca5a5;border-radius:3px;direction:rtl;margin-top:1px;box-sizing:border-box" '
+                   +'onblur="saveSegMissReason(\''+safeField+'\','+i+','+si+',this.value)" '
+                   +'onkeydown="if(event.key===\'Enter\'||event.key===\'Escape\')this.blur()">';
+             } else if (s.missReason) {
+               out += '<div style="font-size:.56rem;color:#b91c1c;padding-right:9px">'+escHtml(s.missReason)+'</div>';
+             }
+             return out;
+           })();
       });
       if (!segs.length) {
         segList = '<div style="font-size:.62rem;color:#9ca3af">ריק</div>';
@@ -2800,6 +2956,9 @@ function _renderRotationPlannerInner() {
       var clearDisplay = fmtClr || autoClearStr;
 
       var deliveryHtml = '<div style="margin-top:4px;border-top:1px solid #f3f4f6;padding-top:3px">'
+        + '<div onclick="event.stopPropagation();openBedLog(\''+safeField+'\','+i+')" '
+        + 'style="cursor:pointer;color:#2d6a4f;font-size:.58rem;font-weight:700;margin-bottom:2px" '
+        + 'title="פתיחת מלאכת ערוגות">🌱 יומן הערוגה ←</div>'
         // --- תאריך הגעה ---
         + '<div onclick="event.stopPropagation()" style="display:flex;align-items:center;gap:3px;flex-wrap:wrap">'
         + '<span style="font-size:.58rem;color:#6b7280;flex-shrink:0">📦 הגעה:</span>'
@@ -2848,11 +3007,40 @@ function _renderRotationPlannerInner() {
         ? '<div style="font-size:.52rem;color:#9ca3af;font-weight:700;letter-spacing:.03em;margin-bottom:1px">מ׳'+(Math.floor((i-1)/field.mifteach)+1)+'</div>'
         : '';
       var dripBadge = '';
-      const cellHtml = '<div class="rot-bed-cell '+conflictCls2+'" style="cursor:pointer;'+mifteachBg+'" onclick="paintBed(\''+safeField+'\','+i+')">'
+
+      /* ── ערוגה ריקה או במנוחה: מסגרת שחורה ── */
+      var isIdle = (!segs.length) || primCrop === 'מנוחה';
+      var idleCls = isIdle ? ' bed-idle' : '';
+
+      /* ── התראה: תאריך שעבר ואף משתל לא סומן ── */
+      var overdueDays = 0;
+      segs.forEach(function(sg){
+        if (sg.status === 'arrived' || sg.status === 'missed') return;
+        if (sg.plantedDate) return;
+        var due = deliveryDate;
+        if (!due) {
+          var cd = plantDefs.find(function(x){ return x.name === sg.crop && x.season === season; });
+          var sd = cd ? getEffectiveStartDate(cd, season) : '';
+          if (sd) {
+            var wd2 = new Date(sd + 'T00:00:00');
+            wd2.setDate(wd2.getDate() + ((sg.wave||1)-1)*(cd.interval||0)*7);
+            due = wd2.getFullYear()+'-'+String(wd2.getMonth()+1).padStart(2,'0')+'-'+String(wd2.getDate()).padStart(2,'0');
+          }
+        }
+        if (!due) return;
+        var diff = Math.floor((new Date().setHours(0,0,0,0) - new Date(due+'T00:00:00').getTime()) / 86400000);
+        if (diff > overdueDays) overdueDays = diff;
+      });
+      var overdueCls = overdueDays >= ROT_OVERDUE_DAYS ? ' bed-overdue' : '';
+      var overdueHtml = overdueDays >= ROT_OVERDUE_DAYS
+        ? '<div style="font-size:.56rem;color:#b45309;font-weight:700;background:#fef3c7;border-radius:3px;padding:0 3px;margin-top:2px">⚠ '+overdueDays+' ימים ללא עדכון</div>'
+        : '';
+
+      const cellHtml = '<div class="rot-bed-cell '+conflictCls2+idleCls+overdueCls+'" style="cursor:pointer;'+mifteachBg+'" onclick="paintBed(\''+safeField+'\','+i+')">'
         + mifteachLabel
         + '<div class="rot-bed-num">'+i+dripBadge+'</div>'
         + prevHtml2 + confHtml2
-        + bar + segList + remHtml + deliveryHtml + noteHtml
+        + bar + segList + remHtml + overdueHtml + deliveryHtml + noteHtml
         + '</div>';
       bedsHtml += cellHtml;
       bedCells.push(cellHtml);
