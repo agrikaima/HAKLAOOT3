@@ -3132,8 +3132,8 @@ function _renderRotationPlannerInner() {
         + 'onchange="saveBedDelivery(\''+safeField+'\','+i+',this.value)" '
         + 'onblur="saveBedDelivery(\''+safeField+'\','+i+',this.value)">'
         + '</div>'
-        // --- ימי גדול ---
-        + '<div onclick="event.stopPropagation()" style="display:flex;align-items:center;gap:3px;margin-top:2px">'
+        // --- ימי גדול (ישן, מוסתר — עבר לרמת המשתל) ---
+        + '<div onclick="event.stopPropagation()" style="display:none;align-items:center;gap:3px;margin-top:2px">'
         + '<span style="font-size:.58rem;color:#6b7280;flex-shrink:0">🌱 ימי גדול:</span>'
         + '<input id="'+growDaysInputId+'" type="number" min="1" max="365" value="'+escAttr(String(growDaysVal))+'" placeholder="ימים" '
         + 'style="width:52px;font-size:.6rem;padding:1px 3px;border:1px solid #bbf7d0;border-radius:4px;box-sizing:border-box" '
@@ -3141,8 +3141,8 @@ function _renderRotationPlannerInner() {
         + 'onblur="saveBedGrowDays(\''+safeField+'\','+i+',this.value)">'
         + (defaultGrowDays && !storedGrowDays ? '<span style="font-size:.55rem;color:#9ca3af">(ברירת מחדל)</span>' : '')
         + '</div>'
-        // --- צפי חיסול ---
-        + '<div onclick="event.stopPropagation()" style="display:flex;align-items:center;gap:3px;margin-top:2px;flex-wrap:wrap">'
+        // --- צפי חיסול (ישן, מוסתר — עבר לרמת המשתל) ---
+        + '<div onclick="event.stopPropagation()" style="display:none;align-items:center;gap:3px;margin-top:2px;flex-wrap:wrap">'
         + '<span style="font-size:.58rem;color:#6b7280;flex-shrink:0">🏁 חיסול:</span>'
         + (clearDisplay ? '<span style="font-size:.65rem;font-weight:700;color:#b45309">'+(fmtClr?'':'~')+clearDisplay+'</span>' : '')
         + (clearDisplay && !fmtClr ? '<span style="font-size:.52rem;color:#9ca3af">(אוטומטי)</span>' : '')
