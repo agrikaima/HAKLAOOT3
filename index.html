@@ -1732,6 +1732,7 @@ function switchTab(tab, el) {
   if (tab === 'tasks')       renderTasksList();
   if (tab === 'procurement') { renderProcCatSelect(); renderProcList(); renderProcSupplierList(); renderWishlist(); renderSuppliersList(); renderCatalog(); }
   if (tab === 'harvest') loadHarvest();
+  if (tab === 'rotation') loadRotHarvest().then(function(rows){ if (rows.length) renderRotationPlanner(); });
   if (tab === 'inventory')   { renderInvCatSelect(); renderInventory(); renderInvDatalists(); }
   if (tab === 'orders')      { renderOrderFieldSelect(); renderCalcFieldSelect(); renderSpeciesSelect(); renderSpeciesList(); renderOrderSeasonFilter(); renderOrderTable(); }
   if (tab === 'rotation')    { renderRotationSeasons(); renderRotation(); }
@@ -2349,6 +2350,94 @@ function bedOpenDate(fieldName, bedNum, segs, season) {
   return best;
 }
 
+/* ── קטיף בפועל, מטופס הקטיף ── */
+var _rotHarvestRows = null;
+
+function loadRotHarvest(force) {
+  if (_rotHarvestRows && !force) return Promise.resolve(_rotHarvestRows);
+  if (!settings.scriptUrl) return Promise.resolve([]);
+  return fetch(settings.scriptUrl + '?action=getHarvest&t=' + Date.now())
+    .then(function(r){ return r.json(); })
+    .then(function(j){ _rotHarvestRows = (j && j.harvest) || []; return _rotHarvestRows; })
+    .catch(function(){ return []; });
+}
+
+/* סיכום שבועי לערוגה: [{week:'21/9', a:12, b:3}] */
+function bedHarvestWeeks(fieldName, bedNum, cropName) {
+  if (!_rotHarvestRows) return [];
+  var byWeek = {};
+  _rotHarvestRows.forEach(function(r){
+    if (String(r['חלקה']||'').trim() !== String(fieldName).trim()) return;
+    if (String(r['מספר ערוגה']||'').trim() !== String(bedNum)) return;
+    if (cropName && String(r['ירק']||'').trim() !== String(cropName).trim()) return;
+    var iso = String(r['תאריך קטיף']||'').slice(0,10);
+    if (!iso) return;
+    var d = new Date(iso + 'T00:00:00');
+    if (isNaN(d)) return;
+    var mon = new Date(d.getTime());
+    mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7));   /* תחילת שבוע = שני */
+    var wk = mon.getDate() + '/' + (mon.getMonth()+1);
+    var o = byWeek[wk] = byWeek[wk] || { week: wk, iso: mon.toISOString().slice(0,10), a:0, b:0 };
+    o.a += Number(r['סוג א']) || 0;
+    o.b += Number(r['סוג ב׳']) || 0;
+  });
+  return Object.keys(byWeek).map(function(k){ return byWeek[k]; })
+    .sort(function(x,y){ return x.iso < y.iso ? -1 : 1; });
+}
+
+var ROT_HARVEST_DAYS_DEFAULT = 21;   /* ממוצע משך קטיף, אם לא הוזן */
+
+/* ימי קטיף — מוחל על כל המופעים של אותו ירק, כמו ימי גידול */
+function saveSegHarvestDays(fieldName, bedNum, segIdx, val) {
+  var c = _segOf(fieldName, bedNum, segIdx); if (!c) return;
+  var d = parseInt(val, 10);
+  var crop = c.seg.crop, n = 0;
+  Object.keys(rotationPlan[c.season] || {}).forEach(function(k){
+    var arr = getBedSegments(rotationPlan[c.season][k]);
+    var ch = false;
+    arr.forEach(function(sg){
+      if (sg.crop === crop) {
+        if (d > 0) sg.harvestDays = d; else delete sg.harvestDays;
+        ch = true; n++;
+      }
+    });
+    if (ch) rotationPlan[c.season][k] = arr;
+  });
+  saveRotationPlan();
+  renderRotationPlanner();
+  if (d > 0 && n > 1) showToast(crop + ' — ' + d + ' ימי קטיף, הוחל על ' + n + ' משתלים');
+}
+
+/* חיסול בפועל */
+function saveSegCleared(fieldName, bedNum, segIdx, dateVal) {
+  var c = _segOf(fieldName, bedNum, segIdx); if (!c) return;
+  if (dateVal) c.seg.clearedDate = dateVal; else delete c.seg.clearedDate;
+  _saveSegs(c);
+}
+
+function _addDays(iso, n) {
+  if (!iso) return null;
+  var d = new Date(iso + 'T00:00:00');
+  d.setDate(d.getDate() + Number(n));
+  return d;
+}
+function _dm(d) { return d ? d.getDate() + '/' + (d.getMonth()+1) : ''; }
+
+/* תחילת קטיף */
+function harvestStart(seg) {
+  if (!seg.plantedDate || !seg.growDays) return null;
+  return _addDays(seg.plantedDate, seg.growDays);
+}
+/* סוף קטיף = תחילת קטיף + ימי קטיף */
+function harvestEnd(seg) {
+  var st = harvestStart(seg);
+  if (!st) return null;
+  var hd = Number(seg.harvestDays) || ROT_HARVEST_DAYS_DEFAULT;
+  var d = new Date(st.getTime());
+  d.setDate(d.getDate() + hd);
+  return d;
+}
+
 /* תאריך קטיף צפוי */
 function _harvestDate(seg) {
   if (!seg.plantedDate || !seg.growDays) return '';
@@ -2911,9 +3000,35 @@ function _renderRotationPlannerInner() {
                  +'style="font-size:.55rem;padding:0 2px;border:1px solid #d1d5db;border-radius:3px;width:42px" '
                  +'onchange="saveSegGrowDays(\''+safeField+'\','+i+','+si+',this.value)">';
 
-             if (hv) out += '<span style="font-size:.58rem;color:#b45309;font-weight:700">🧺 '+hv+'</span>';
+             out += '<input type="number" min="0" value="'+escAttr(s.harvestDays||'')+'" placeholder="קטיף" '
+                 +'onclick="event.stopPropagation()" title="ימי קטיף (ברירת מחדל 21)" '
+                 +'style="font-size:.55rem;padding:0 2px;border:1px solid #fed7aa;border-radius:3px;width:42px" '
+                 +'onchange="saveSegHarvestDays(\''+safeField+'\','+i+','+si+',this.value)">';
+
+             var hs = harvestStart(s), he = harvestEnd(s);
+             if (hs) {
+               out += '<span style="font-size:.58rem;color:#b45309;font-weight:700">🧺 '+_dm(hs)
+                   + (he ? '–'+_dm(he) : '')+'</span>';
+             }
+
+             out += '<span style="font-size:.55rem;color:#6b7280;flex-shrink:0">🏁</span>';
+             out += '<input type="date" value="'+escAttr(s.clearedDate||'')+'" onclick="event.stopPropagation()" '
+                 +'title="חיסול בפועל" '
+                 +'style="font-size:.55rem;padding:0 2px;border:1px solid #fcd34d;border-radius:3px;width:78px" '
+                 +'onchange="saveSegCleared(\''+safeField+'\','+i+','+si+',this.value)">';
 
              out += '</div>';
+
+             /* קטיף בפועל, שבוע-שבוע */
+             var hw = bedHarvestWeeks(safeField, i, s.crop);
+             if (hw.length) {
+               out += '<div style="font-size:.55rem;color:#15803d;padding-right:9px;line-height:1.4">'
+                   + hw.map(function(x){
+                       return x.week+': '+(Math.round((x.a+x.b)*10)/10)
+                            + (x.b ? ' <span style="color:#92400e">(ב׳ '+x.b+')</span>' : '');
+                     }).join(' · ')
+                   + '</div>';
+             }
 
              if (st === 'missed') {
                out += '<input type="text" value="'+escAttr(s.missReason||'')+'" placeholder="למה לא הגיע?" '
