@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#2d6a4f">
+<title>שלושה ברושים ירוקים — מדריך</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@500;700;900&family=Heebo:wght@400;500;700;900&display=swap');
+
+  *{box-sizing:border-box;margin:0;padding:0}
+
+  :root{
+    --ink:#16261c;
+    --green:#2d6a4f;
+    --deep:#1b4332;
+    --leaf:#40916c;
+    --rule:#d5ded6;
+    --paper:#fbfaf6;
+    --warn:#b0521e;
+    --warn-bg:#fdf3ec;
+  }
+
+  body{
+    font-family:'Heebo',Arial,sans-serif;
+    background:#e9ebe6;color:var(--ink);
+    line-height:1.6;
+    padding:0 0 60px;
+  }
+
+  .wrap{max-width:720px;margin:0 auto;padding:0 16px}
+
+  /* ── hero ── */
+  header{
+    background:linear-gradient(160deg,var(--deep),var(--leaf));
+    color:#fff;padding:34px 0 30px;margin-bottom:22px;
+  }
+  header .wrap{text-align:center}
+  header h1{
+    font-family:'Frank Ruhl Libre',Georgia,serif;
+    font-size:2rem;font-weight:900;line-height:1.15;margin-bottom:6px;
+  }
+  header p{font-size:.95rem;opacity:.92}
+
+  /* ── primary link ── */
+  .primary{
+    display:block;background:var(--paper);border-radius:10px;
+    padding:20px;margin-bottom:22px;text-decoration:none;color:inherit;
+    box-shadow:0 2px 14px rgba(0,0,0,.09);
+    border-right:6px solid var(--green);
+  }
+  .primary .label{font-size:.74rem;font-weight:700;color:#6a7a6d;letter-spacing:.04em}
+  .primary .name{
+    font-family:'Frank Ruhl Libre',serif;font-size:1.45rem;
+    font-weight:700;margin:2px 0 5px;color:var(--deep);
+  }
+  .primary .url{font-size:.8rem;color:var(--leaf);word-break:break-all;direction:ltr;text-align:right}
+  .primary .desc{font-size:.88rem;color:#4a5a4d;margin-top:8px}
+
+  /* ── sections ── */
+  section{
+    background:var(--paper);border-radius:10px;padding:20px 22px;
+    margin-bottom:16px;box-shadow:0 1px 8px rgba(0,0,0,.06);
+  }
+  section h2{
+    font-family:'Frank Ruhl Libre',serif;font-size:1.25rem;font-weight:700;
+    color:var(--deep);padding-bottom:9px;margin-bottom:14px;
+    border-bottom:2px solid var(--rule);
+  }
+  section h3{
+    font-family:'Frank Ruhl Libre',serif;font-size:1.02rem;
+    font-weight:700;margin:16px 0 6px;
+  }
+  section h3:first-of-type{margin-top:0}
+  section p{margin-bottom:10px;font-size:.92rem}
+  section p:last-child{margin-bottom:0}
+
+  ol,ul{margin:0 0 12px;padding-right:20px}
+  li{margin-bottom:6px;font-size:.92rem}
+  li:last-child{margin-bottom:0}
+
+  /* ── link cards ── */
+  .links{display:flex;flex-direction:column;gap:9px}
+  .lk{
+    display:flex;gap:12px;align-items:flex-start;
+    padding:12px 14px;border:1px solid var(--rule);border-radius:8px;
+    text-decoration:none;color:inherit;background:#fff;
+  }
+  .lk:hover{border-color:var(--leaf);background:#f4faf6}
+  .lk .ic{font-size:1.4rem;line-height:1.2;flex-shrink:0}
+  .lk .tx{flex:1;min-width:0}
+  .lk .t{font-weight:700;font-size:.95rem;color:var(--deep)}
+  .lk .d{font-size:.82rem;color:#5d6b60;margin-top:2px}
+  .lk .u{font-size:.72rem;color:#93a396;direction:ltr;text-align:right;
+         margin-top:3px;word-break:break-all}
+
+  /* ── tabs table ── */
+  .tabs{display:flex;flex-direction:column;gap:2px}
+  .tab{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid #eef1ed}
+  .tab:last-child{border-bottom:0}
+  .tab .n{font-weight:700;font-size:.92rem;min-width:118px;flex-shrink:0}
+  .tab .w{font-size:.87rem;color:#4a5a4d}
+
+  /* ── callouts ── */
+  .note{
+    background:var(--warn-bg);border-right:4px solid var(--warn);
+    padding:12px 14px;border-radius:5px;margin:12px 0;font-size:.88rem;
+  }
+  .note b{color:var(--warn)}
+  .tip{
+    background:#eef6f0;border-right:4px solid var(--leaf);
+    padding:12px 14px;border-radius:5px;margin:12px 0;font-size:.88rem;
+  }
+
+  .steps{counter-reset:s;list-style:none;padding:0}
+  .steps li{
+    counter-increment:s;position:relative;padding-right:34px;margin-bottom:11px;
+  }
+  .steps li::before{
+    content:counter(s);position:absolute;right:0;top:1px;
+    width:23px;height:23px;border-radius:50%;
+    background:var(--green);color:#fff;
+    font-size:.76rem;font-weight:700;
+    display:flex;align-items:center;justify-content:center;
+  }
+
+  kbd{
+    background:#fff;border:1px solid var(--rule);border-bottom-width:2px;
+    border-radius:4px;padding:1px 6px;font-family:inherit;font-size:.85em;
+    white-space:nowrap;
+  }
+
+  footer{text-align:center;font-size:.78rem;color:#7d8a7f;padding:24px 16px 0}
+
+  @media (max-width:520px){
+    header h1{font-size:1.6rem}
+    section{padding:16px 15px}
+    .tab{flex-direction:column;gap:2px}
+    .tab .n{min-width:0}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <h1>🌿 שלושה ברושים ירוקים</h1>
+    <p>מערכת לניהול השדה — מדריך והכל במקום אחד</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <a class="primary" href="https://agrikaima.github.io/HAKLAOOT3/">
+    <div class="label">האפליקציה הראשית</div>
+    <div class="name">כניסה לאפליקציה →</div>
+    <div class="url">agrikaima.github.io/HAKLAOOT3</div>
+    <div class="desc">כאן מתעדים שתילות, משימות, רכש ומלאי, ומתכננים את העונה.</div>
+  </a>
+
+  <section>
+    <h2>מה זה בעצם?</h2>
+    <p>אפליקציה לניהול השדה. כל מי שעובד כאן נכנס לאותה כתובת, רואה את אותם נתונים, ומעדכן אותם. אין צורך להתקין שום דבר ואין סיסמאות.</p>
+    <p>הנתונים נשמרים בגיליון Google Sheets משותף, והאפליקציה מסתנכרנת איתו לבד. כך מה שמישהו מזין בשדה מהטלפון מופיע גם אצל כולם.</p>
+
+    <div class="tip">
+      <b>בכניסה הראשונה</b> תופיע שאלה על השם שלך. כדאי למלא — השם מופיע לצד כל שינוי, וכך אפשר לדעת מי עשה מה ומתי.
+    </div>
+  </section>
+
+  <section>
+    <h2>הוספה למסך הבית</h2>
+    <p>כך זה נפתח כמו אפליקציה רגילה, בלי לחפש את הכתובת בכל פעם.</p>
+
+    <h3>באייפון</h3>
+    <ol class="steps">
+      <li>פותחים את הקישור ב־<b>Safari</b> (לא בדפדפן אחר)</li>
+      <li>לוחצים על כפתור השיתוף — הריבוע עם החץ כלפי מעלה</li>
+      <li>גוללים ובוחרים <b>״הוסף למסך הבית״</b></li>
+    </ol>
+
+    <h3>באנדרואיד</h3>
+    <ol class="steps">
+      <li>פותחים את הקישור ב־<b>Chrome</b></li>
+      <li>לוחצים על שלוש הנקודות בפינה</li>
+      <li>בוחרים <b>״הוסף למסך הבית״</b></li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>מה יש בכל לשונית</h2>
+    <div class="tabs">
+      <div class="tab"><div class="n">🌱 מלאכת ערוגות</div>
+        <div class="w">תיעוד שתילה, זריעה, ריסוס, מנוחה וחיסול — לפי חלקה וערוגה</div></div>
+      <div class="tab"><div class="n">✅ משימות</div>
+        <div class="w">מה צריך לעשות, עדיפות, תאריך יעד וסימון ביצוע</div></div>
+      <div class="tab"><div class="n">🛒 רכש</div>
+        <div class="w">מה הוזמן, ממי, בכמה — וקטלוג מוצרים עם מק״טים וקישורים</div></div>
+      <div class="tab"><div class="n">📦 מלאי</div>
+        <div class="w">מה יש במחסן, סף התראה למלאי נמוך</div></div>
+      <div class="tab"><div class="n">🚚 הזמנות</div>
+        <div class="w">תכנון העונה — אילו ירקות, כמה משתלים, מתי כל אחד מגיע</div></div>
+      <div class="tab"><div class="n">💰 כספים</div>
+        <div class="w">סיכום עלויות לפי עונה</div></div>
+      <div class="tab"><div class="n">🗺️ רוטציה</div>
+        <div class="w">שיבוץ הירקות לערוגות, תאריכי הגעה וחיסול</div></div>
+      <div class="tab"><div class="n">🧺 קטיף</div>
+        <div class="w">כמויות שנקטפו, מתוך טופס שהצוות ממלא</div></div>
+      <div class="tab"><div class="n">⚙️ הגדרות</div>
+        <div class="w">שם משתמש, סנכרון, היסטוריית גרסאות והגדרות חלקות</div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>איך שומרים</h2>
+    <p>בכל טופס יש כפתור ירוק בתחתית. השם שלו משתנה לפי המקום, אבל התפקיד זהה:</p>
+    <ul>
+      <li><b>מלאכת ערוגות</b> — ״שמור ושלח ל-Sheets״</li>
+      <li><b>רכש / מלאי</b> — ״שמור פריט״</li>
+      <li><b>ספקים</b> — ״שמור ספק״</li>
+      <li><b>קטלוג</b> — ״שמור בקטלוג״</li>
+      <li><b>עריכת רשומה קיימת</b> — ״שמור שינויים״</li>
+    </ul>
+    <div class="note">
+      <b>חשוב:</b> בלי ללחוץ על הכפתור, מה שמילאת לא נשמר ולא מגיע לאף אחד. במשימות אין כפתור נפרד — השמירה קורית לבד.
+    </div>
+  </section>
+
+  <section>
+    <h2>איך העדכונים עוברים בין כולם</h2>
+    <p>לכל מכשיר יש עותק משלו של הנתונים, והם מתואמים דרך הגיליון המשותף.</p>
+
+    <h3>מהמכשיר שלך החוצה</h3>
+    <p>קורה <b>לבד</b>, בכל שמירה, תוך שניות. אין מה ללחוץ.</p>
+
+    <h3>מהגיליון אליך</h3>
+    <ul>
+      <li>מכשיר חדש שנכנס בפעם הראשונה — מושך הכל אוטומטית</li>
+      <li>כשמישהו אחר מעדכן — מופיעה רצועה בתחתית המסך עם ״משוך עכשיו״</li>
+      <li>ביוזמתך — הגדרות ← <b>⬇️ משוך מהגיליון</b></li>
+    </ul>
+
+    <div class="note">
+      <b>שתי נקודות שכדאי לדעת:</b><br>
+      עדיף שלא לעבוד בו־זמנית על אותם נתונים — המערכת שולחת הכל כחבילה אחת, ולכן מי ששלח אחרון גובר.<br><br>
+      ואל תלחצי ״משוך״ באמצע הקלדה של משהו שעדיין לא נשמר — המשיכה מחליפה את מה שעל המסך.
+    </div>
+  </section>
+
+  <section>
+    <h2>כלים נוספים</h2>
+    <p>עובדים על אותם נתונים, ונפתחים בנפרד. מיועדים בעיקר להדפסה ולתכנון.</p>
+    <div class="links">
+      <a class="lk" href="https://agrikaima.github.io/HAKLAOOT3/tochnit.html">
+        <span class="ic">📋</span>
+        <span class="tx">
+          <span class="t">תוכנית העונה</span>
+          <span class="d">כל הירקות לפי שבועות הגעה — כמויות, מיקום בשדה, אופן שתילה ודגשים. אפשר גם כמפת שדה, מותאם להדפסה על A4, ואפשר לייצא לגיליון.</span>
+          <span class="u">agrikaima.github.io/HAKLAOOT3/tochnit.html</span>
+        </span>
+      </a>
+      <a class="lk" href="https://agrikaima.github.io/HAKLAOOT3/hashkaya.html">
+        <span class="ic">💧</span>
+        <span class="tx">
+          <span class="t">תכנון השקיה</span>
+          <span class="d">מזינים את ההתאדות החזויה ומקבלים דקות השקיה לכל אחד מחמשת הברזים, כולל שעות הפעלה ברצף. נשמר לגיליון לתיעוד.</span>
+          <span class="u">agrikaima.github.io/HAKLAOOT3/hashkaya.html</span>
+        </span>
+      </a>
+    </div>
+  </section>
+
+  <section>
+    <h2>קטיף</h2>
+    <p>דיווח הקטיף נעשה דרך טופס נפרד, לא דרך האפליקציה. הנתונים מגיעים לגיליון ומופיעים בלשונית הקטיף.</p>
+    <div class="links">
+      <a class="lk" href="https://docs.google.com/forms/d/1BQZ0nz86pga8P6O7MHfKbJkKtnEibYU7xsv-N4BB6RY/viewform">
+        <span class="ic">📝</span>
+        <span class="tx">
+          <span class="t">טופס דיווח קטיף</span>
+          <span class="d">ממלאים אחרי כל קטיף: ירק, כמות לפי סוג א׳/ב׳/פסולת, פילוח גדלים, חלקה ומספר ערוגה, ומי קטף.</span>
+        </span>
+      </a>
+      <a class="lk" href="https://docs.google.com/spreadsheets/d/1WgwanfbRBcWMtJQVL5AfcmJD8VQUB5g0AjDxhXMRW54/edit">
+        <span class="ic">📊</span>
+        <span class="tx">
+          <span class="t">תשובות הטופס</span>
+          <span class="d">כל דיווחי הקטיף, בגיליון נפרד.</span>
+        </span>
+      </a>
+    </div>
+  </section>
+
+  <section>
+    <h2>מאחורי הקלעים</h2>
+    <p>לא נדרש לשימוש יומיומי — רק למי שמתחזק את המערכת.</p>
+    <div class="links">
+      <a class="lk" href="https://docs.google.com/spreadsheets/d/1Ihw_DjgY_JbBehPcIy3o1JyYjQRxlgeQ33OqVahtuBw/edit">
+        <span class="ic">📗</span>
+        <span class="tx">
+          <span class="t">הגיליון הראשי</span>
+          <span class="d">כאן נשמרים כל הנתונים. כולל לשוניות מוסתרות לגיבוי ולהיסטוריה. הסקריפט נמצא בתוכו: Extensions ← Apps Script.</span>
+        </span>
+      </a>
+      <a class="lk" href="https://github.com/agrikaima/HAKLAOOT3">
+        <span class="ic">💻</span>
+        <span class="tx">
+          <span class="t">הקוד</span>
+          <span class="d">כל הקבצים. שינוי כאן מתעדכן באתר לבד תוך דקה־שתיים.</span>
+        </span>
+      </a>
+    </div>
+  </section>
+
+  <section>
+    <h2>אם משהו לא עובד</h2>
+
+    <h3>נתונים שלא מופיעים</h3>
+    <p>הגדרות ← <b>⬇️ משוך מהגיליון</b>. אם עדיין ריק, כדאי לוודא שנכנסת לכתובת הנכונה — יש כתובת ישנה שכבר לא בשימוש.</p>
+
+    <h3>משהו נמחק בטעות</h3>
+    <p>הגדרות ← <b>🕘 היסטוריית גרסאות</b>. שמורים שם 20 המצבים האחרונים, עם תאריך ועם מי שינה. בוחרים שורה ולוחצים ״שחזר״.</p>
+    <div class="tip">
+      לפני שחזור כדאי לוודא שאין לך שינויים חדשים שטרם נשמרו — השחזור מחזיר את כל הנתונים לאותה נקודה.
+    </div>
+
+    <h3>הכל נראה תקוע</h3>
+    <p>רענון מלא: <kbd>Ctrl</kbd> + <kbd>F5</kbd> במחשב, או סגירה ופתיחה מחדש בטלפון.</p>
+  </section>
+
+  <footer>
+    שלושה ברושים ירוקים · מדריך למשתמש
+  </footer>
+
+</div>
+</body>
+</html>
