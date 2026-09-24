@@ -539,7 +539,7 @@ function save(ev){
     const s = state[v.id];
     const area = dunam(v);
     const f = flow(v);
-    const litersPerDay = targetMM * area * 1000 * s.everyDays;
+    const litersPerDay = targetOf(v.id) * area * 1000 * s.everyDays;
     const minsPerDay = f > 0 ? (litersPerDay / f) * 60 : 0;
     return {
       name: v.name,
