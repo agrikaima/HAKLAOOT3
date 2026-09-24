@@ -2318,6 +2318,37 @@ function saveSegGrowDays(fieldName, bedNum, segIdx, val) {
   if (d > 0 && n > 1) showToast(crop + ' — ' + d + ' ימים, הוחל על ' + n + ' משתלים');
 }
 
+/* תאריך הגעה של משתל: שלו → של הערוגה (רק למשתל הראשון) → מחושב מהתכנון */
+function segArrival(fieldName, bedNum, seg, segIdx, season) {
+  if (seg.arriveDate) return seg.arriveDate;
+  if (segIdx === 0) {
+    var legacy = (rotationDelivery[season] || {})[fieldName + '_' + bedNum];
+    if (legacy) return legacy;
+  }
+  var cd = plantDefs.find(function(x){ return x.name === seg.crop && x.season === season; });
+  var sd = cd ? getEffectiveStartDate(cd, season) : '';
+  if (!sd) return '';
+  var d = new Date(sd + 'T00:00:00');
+  d.setDate(d.getDate() + ((seg.wave || 1) - 1) * (cd.interval || 0) * 7);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+function saveSegArrival(fieldName, bedNum, segIdx, dateVal) {
+  var c = _segOf(fieldName, bedNum, segIdx); if (!c) return;
+  if (dateVal) c.seg.arriveDate = dateVal; else delete c.seg.arriveDate;
+  _saveSegs(c);
+}
+
+/* תאריך פתיחת הערוגה = המוקדם מבין המשתלים */
+function bedOpenDate(fieldName, bedNum, segs, season) {
+  var best = '';
+  segs.forEach(function(sg, idx){
+    var a = segArrival(fieldName, bedNum, sg, idx, season);
+    if (a && (!best || a < best)) best = a;
+  });
+  return best;
+}
+
 /* תאריך קטיף צפוי */
 function _harvestDate(seg) {
   if (!seg.plantedDate || !seg.growDays) return '';
@@ -2862,6 +2893,14 @@ function _renderRotationPlannerInner() {
                  +'style="cursor:pointer;background:'+m.bg+';color:'+m.fg+';font-size:.58rem;font-weight:700;'
                  +'border-radius:4px;padding:1px 5px;flex-shrink:0" title="לחצי לשינוי מצב">'+m.ic+' '+m.t+'</span>';
 
+             var arr = segArrival(safeField, i, s, si, season);
+             out += '<span style="font-size:.55rem;color:#6b7280;flex-shrink:0">📦</span>';
+             out += '<input type="date" value="'+escAttr(arr)+'" onclick="event.stopPropagation()" '
+                 +'title="תאריך הגעה של המשתל" '
+                 +'style="font-size:.55rem;padding:0 2px;border:1px solid #bfdbfe;border-radius:3px;width:78px" '
+                 +'onchange="saveSegArrival(\''+safeField+'\','+i+','+si+',this.value)">';
+
+             out += '<span style="font-size:.55rem;color:#6b7280;flex-shrink:0">🌱</span>';
              out += '<input type="date" value="'+escAttr(s.plantedDate||'')+'" onclick="event.stopPropagation()" '
                  +'title="תאריך שתילה בפועל" '
                  +'style="font-size:.55rem;padding:0 2px;border:1px solid #d1d5db;border-radius:3px;width:78px" '
@@ -2955,12 +2994,22 @@ function _renderRotationPlannerInner() {
       }
       var clearDisplay = fmtClr || autoClearStr;
 
+      var _openISO = bedOpenDate(safeField, i, segs, season);
+      var _openTxt = '';
+      if (_openISO) {
+        var _od = new Date(_openISO + 'T00:00:00');
+        _openTxt = _od.getDate()+'/'+String(_od.getMonth()+1).padStart(2,'0')+'/'+String(_od.getFullYear()).slice(2);
+      }
+
       var deliveryHtml = '<div style="margin-top:4px;border-top:1px solid #f3f4f6;padding-top:3px">'
         + '<div onclick="event.stopPropagation();openBedLog(\''+safeField+'\','+i+')" '
         + 'style="cursor:pointer;color:#2d6a4f;font-size:.58rem;font-weight:700;margin-bottom:2px" '
         + 'title="פתיחת מלאכת ערוגות">🌱 יומן הערוגה ←</div>'
-        // --- תאריך הגעה ---
-        + '<div onclick="event.stopPropagation()" style="display:flex;align-items:center;gap:3px;flex-wrap:wrap">'
+        + (_openTxt
+            ? '<div style="font-size:.58rem;color:#0369a1;font-weight:700;margin-bottom:2px">🗓️ פתיחת ערוגה: '+_openTxt+'</div>'
+            : '')
+        // --- תאריך הגעה (ישן, מוסתר) ---
+        + '<div onclick="event.stopPropagation()" style="display:none;align-items:center;gap:3px;flex-wrap:wrap">'
         + '<span style="font-size:.58rem;color:#6b7280;flex-shrink:0">📦 הגעה:</span>'
         + (fmtDel ? '<span style="font-size:.65rem;font-weight:700;color:#0369a1">'+fmtDel+'</span>' : '')
         + '<input type="date" value="'+escAttr(deliveryDate)+'" '
