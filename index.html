@@ -3339,7 +3339,7 @@ function paintBed(fieldName, bedNum) {
 
   // check if this wave already fully assigned
   if (cropDef && metersToAdd !== null) {
-    var totalNeededWave = Math.round(calcDef(cropDef).metersPerWave * 10) / 10;
+    var totalNeededWave = Math.round(calcDef(cropDef).dripMeters * 10) / 10;
     if (countAssigned(activeWave) >= totalNeededWave - 0.05) {
       showToast('✓ ' + _rotPaintCrop + ' משתל ' + activeWave + ' כבר שובץ במלואו (' + totalNeededWave + 'מ׳)', 'err');
       return;
@@ -3371,7 +3371,7 @@ function paintBed(fieldName, bedNum) {
   }
 
   // calc how much still needed for this wave across ALL beds
-  var totalNeededWave2 = Math.round(calcDef(cropDef).metersPerWave * 10) / 10;
+  var totalNeededWave2 = Math.round(calcDef(cropDef).dripMeters * 10) / 10;
   var stillNeeded = Math.round((totalNeededWave2 - countAssigned(activeWave)) * 10) / 10;
 
   if (stillNeeded <= 0.05) {
@@ -3394,10 +3394,12 @@ function paintBed(fieldName, bedNum) {
     .reduce(function(a,s){ return a + segM(s); }, 0);
   var physicalCapacity = fieldDef ? fieldDef.len * fieldDef.drips : effectiveBedLen;
   var totalUsedInBed = bSegs.reduce(function(a,s){ return a + segM(s); }, 0);
-  var bRemaining = Math.max(0, Math.round(Math.min(
-    effectiveBedLen - bUsed,
-    physicalCapacity - totalUsedInBed
-  ) * 10) / 10);
+  /* המגבלה היא הקיבולת הפיזית של הערוגה בלבד.
+     כל משתל תופס את הרוחב שלו, ומשתלים נוספים נערמים עד שהערוגה מתמלאת —
+     ולכן אין להגביל את סך הגידול לרוחב של משתל אחד. */
+  var bRemaining = Math.max(0, Math.round(
+    (physicalCapacity - totalUsedInBed) * 10
+  ) / 10);
   var bedsFilledCount = 0;
   var metersLeft = stillNeeded;
   if (bRemaining > 0.05) {
@@ -3412,7 +3414,7 @@ function paintBed(fieldName, bedNum) {
   var totalWaves = cropDef ? (cropDef.waves || 1) : 1;
   if (bedsFilledCount === 0) {
     var physicallyFull = (physicalCapacity - totalUsedInBed) <= 0.05;
-    var cropHasSpace = (effectiveBedLen - bUsed) > 0.05;
+    var cropHasSpace = false;   /* אין תקרה נפרדת לגידול — רק הקיבולת הפיזית */
     if (physicallyFull && cropHasSpace) {
       if (confirm('הערוגה מלאה פיזית.\nלשבץ את ' + _rotPaintCrop + ' כירק חליפה — שיכנס כשהשטח יתפנה?')) {
         var seqAdd = Math.round(Math.min(metersLeft, effectiveBedLen - bUsed) * 10) / 10;
@@ -4377,7 +4379,10 @@ function calcDef(d) {
   const metersTotal = metersPerWave * waves;  // מ' שלוחות סה"כ
   const rowMeters   = metersPerWave * rows;   // מ' שורות למשתל
   const bedMeters   = d.drips ? metersPerWave / d.drips : null; // מ' ערוגה למשתל
-  return { plantsPerWave, plantsTotal, metersPerWave, metersTotal, rowMeters, bedMeters };
+  /* תפוסת הערוגה נמדדת באורך הצינור, לא באורך השורות:
+     שתי שורות משני צדי אותה שלוחה תופסות שלוחה אחת, לא שתיים */
+  const dripMeters  = metersPerWave;   /* metersPerWave כבר מודד אורך צינור */
+  return { plantsPerWave, plantsTotal, metersPerWave, metersTotal, rowMeters, bedMeters, dripMeters };
 }
 
 function orderFieldChanged() {
