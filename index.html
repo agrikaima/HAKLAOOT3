@@ -1037,22 +1037,30 @@
       </div>
     </div>
 
-    <!-- שדות שתיל -->
-    <div id="sp-transplant-fields">
+    <!-- גיאומטריית שתילה — רלוונטית גם לשתיל וגם לזרע -->
+    <div id="sp-geometry-fields">
       <div class="fg g3">
         <div>
-          <label>מרחק שתילה (ס"מ) <span class="tip" data-tip="המרחק בין צמח לצמח לאורך השורה.&#10;למשל: עגבנייה 40 ס&quot;מ, חסה 25 ס&quot;מ, כרישה 20 ס&quot;מ"></span></label>
-          <input type="number" id="sp-dist" placeholder="40" min="5">
+          <label id="sp-dist-label">מרחק שתילה (ס"מ) <span class="tip" data-tip="המרחק בין צמח לצמח לאורך השורה.&#10;למשל: עגבנייה 40 ס&quot;מ, חסה 25 ס&quot;מ, גזר 3 ס&quot;מ"></span></label>
+          <input type="number" id="sp-dist" placeholder="40" min="1">
         </div>
         <div>
-          <label>שורות לשלוחה <span class="tip" data-tip="כמה שורות של צמחים רצות לאורך שלוחה אחת (צינור השקיה אחד).&#10;למשל: בצל ירוק — 2 שורות לאורך השלוחה, עגבנייה/כרישה — 1 שורה"></span></label>
+          <label>שורות לשלוחה <span class="tip" data-tip="כמה שורות של צמחים רצות לאורך שלוחה אחת (צינור השקיה אחד).&#10;למשל: בצל ירוק — 2 שורות, גזר — 2 שורות, עגבנייה — 1 שורה"></span></label>
           <input type="number" id="sp-rows" placeholder="2" min="1">
         </div>
         <div>
-          <label>שלוחות בערוגה <span class="tip" data-tip="כמה שלוחות (צינורות) יש בערוגה הסטנדרטית של הגידול הזה.&#10;קיפוד/בז/פתוח = 4 שלוחות. חול/אילנית = 3 שלוחות.&#10;משמש לחישוב מגשים וכמויות לעונה."></span></label>
+          <label>שלוחות בערוגה <span class="tip" data-tip="כמה שלוחות (צינורות) יש בערוגה הסטנדרטית של הגידול הזה.&#10;קיפוד/בז/פתוח = 4 שלוחות. חול/אילנית = 3 שלוחות."></span></label>
           <input type="number" id="sp-shoots" placeholder="3" min="1">
         </div>
       </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:.82rem;margin-top:8px;cursor:pointer">
+        <input type="checkbox" id="sp-drip-based" style="width:16px;height:16px;cursor:pointer;-webkit-appearance:auto;appearance:auto;accent-color:#16a34a;padding:0;border:none">
+        <span>שתילה לאורך שלוחות <span style="color:var(--muted);font-size:.75rem">(קיבולת ערוגה = אורך × מס' שלוחות)</span></span>
+      </label>
+    </div>
+
+    <!-- שדות שתיל -->
+    <div id="sp-transplant-fields">
       <div class="fg g2">
         <div>
           <label>מחיר מגש (₪)</label>
@@ -1063,10 +1071,6 @@
           <input type="number" id="sp-tray-size" placeholder="300" min="1">
         </div>
       </div>
-      <label style="display:flex;align-items:center;gap:8px;font-size:.82rem;margin-top:8px;cursor:pointer">
-        <input type="checkbox" id="sp-drip-based" style="width:16px;height:16px;cursor:pointer;-webkit-appearance:auto;appearance:auto;accent-color:#16a34a;padding:0;border:none">
-        <span>שתילה לאורך שלוחות <span style="color:var(--muted);font-size:.75rem">(קיבולת ערוגה = אורך × מס' שלוחות)</span></span>
-      </label>
     </div>
 
     <!-- שדות זרע -->
@@ -4047,8 +4051,12 @@ function saveSpecies() {
 
 function toggleSeedFields() {
   const isSeed = document.getElementById('sp-type').value === 'seed';
+  /* הגיאומטריה — מרחק, שורות ושלוחות — רלוונטית לשניהם ונשארת גלויה */
   document.getElementById('sp-transplant-fields').style.display = isSeed ? 'none' : 'block';
   document.getElementById('sp-seed-fields').style.display       = isSeed ? 'block' : 'none';
+  const lbl = document.getElementById('sp-dist-label');
+  if (lbl) lbl.innerHTML = (isSeed ? 'מרחק זריעה (ס"מ)' : 'מרחק שתילה (ס"מ)')
+    + ' <span class="tip" data-tip="המרחק בין צמח לצמח לאורך השורה."></span>';
 }
 
 function clearSpeciesForm() {
@@ -4120,7 +4128,9 @@ function renderSpeciesList() {
   el.innerHTML = [...plantSpecies].sort((a,b)=>a.name.localeCompare(b.name,'he')).map(sp=>{
     const isSeed = sp.type === 'seed';
     const meta = isSeed
-      ? `🌾 זרע · ${sp.seedGrams||'?'}ג' לשקית · ${sp.seedPerMeter||'?'}ג'/מ' · ₪${sp.seedPrice||'?'}/שקית`
+      ? `🌾 זרע · ↔${sp.dist||'?'}ס"מ · ${sp.rows||1} שורות/שלוחה · ${sp.shoots||'?'} שלוחות`
+        + ` → <b>${sp.dist ? (Math.round((sp.rows||1)*(100/sp.dist)*10)/10) : '?'} זרעים/מ' שלוחה</b>`
+        + ` · ${sp.seedGrams||'?'}ג' לשקית`
       : `↔${sp.dist}ס"מ · ${sp.rows||1} שורות/שלוחה · ${sp.shoots||1} שלוחות → <strong>${(sp.rows*(100/sp.dist)).toFixed(1)} שתילים/מ׳ שלוחה</strong>${sp.price?' · ₪'+sp.price+'/מגש':''}`;
     return `<div class="cat-def-card">
       <div class="cat-def-info">
