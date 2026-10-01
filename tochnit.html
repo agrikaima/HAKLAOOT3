@@ -86,6 +86,7 @@
 
   .crop{font-family:'Frank Ruhl Libre',serif;font-size:.99rem;font-weight:700;line-height:1.2}
   .wave{font-size:.7rem;color:#6a7a6d;margin-top:1px}
+  .est{font-size:.68rem;color:#b0521e;font-weight:700;margin-top:2px}
   .qty{font-family:'Frank Ruhl Libre',serif;font-size:1.2rem;font-weight:700;white-space:nowrap}
   .qty span{font-size:.62rem;font-family:'Heebo',sans-serif;font-weight:400;
             color:#6a7a6d;display:block}
@@ -368,12 +369,14 @@ function wavesOf(def, seasonStart){
   const out=[];
   const waves=Number(def.waves)||1;
   const interval=Number(def.interval)||0;
+  /* אם לא נקבע שבוע פתיחה ולא תאריך — התאריך הוא הערכה בלבד */
+  const hasStart = !!(def.startDate || (Number(def.startWeek) > 0));
   const startWeek=Number(def.startWeek)||1;
   for(let w=1;w<=waves;w++){
     const off=(startWeek-1)+(w-1)*interval;
     const d=new Date(seasonStart);
     d.setDate(d.getDate()+off*7);
-    out.push({wave:w,totalWaves:waves,date:d,offsetWeeks:off});
+    out.push({wave:w,totalWaves:waves,date:d,offsetWeeks:off,estimated:!hasStart});
   }
   return out;
 }
@@ -503,7 +506,7 @@ function build(){
         const notes=[def.notes,sp.notes].filter(Boolean).join(' · ');
 
         exportRows.push([
-          'שבוע '+(wk+1), fmtNum(d), def.name, w.wave+'/'+w.totalWaves,
+          'שבוע '+(wk+1), fmtNum(d)+(w.estimated?' (הערכה)':''), def.name, w.wave+'/'+w.totalWaves,
           Number(def.plantsWave)||0,
           locs.length ? locs.map(l=>l.field+(l.beds.length?' ע׳ '+l.beds.join(', '):'')).join(' ; ')
                       : (def.field||''),
@@ -513,7 +516,8 @@ function build(){
 
         html+='<tr>'+
           '<td><div class="crop">'+esc(def.name)+'</div>'+
-            '<div class="wave">משתל '+w.wave+' מתוך '+w.totalWaves+'</div></td>'+
+            '<div class="wave">משתל '+w.wave+' מתוך '+w.totalWaves+'</div>'+
+            (w.estimated?'<div class="est">⏳ תאריך טרם אושר</div>':'')+'</td>'+
           '<td class="c"><div class="qty">'+(Number(def.plantsWave)||0).toLocaleString('he-IL')+
             '<span>שתיל</span></div></td>'+
           '<td class="loc">'+loc+'</td>'+
