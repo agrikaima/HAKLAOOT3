@@ -3381,12 +3381,8 @@ function paintBed(fieldName, bedNum) {
     return;
   }
 
-  // auto-fill beds starting from bedNum — empty beds first, partial beds only if no empty remain
-  var totalBeds = fieldDef ? fieldDef.beds : bedNum;
-  var bedsFilledCount = 0;
-  var metersLeft = stillNeeded;
-
   // fill only the clicked bed
+  var totalBeds = fieldDef ? fieldDef.beds : bedNum;
   var bKey = fieldName + '_' + bedNum;
   var bVal = rotationPlan[season][bKey] || null;
   var bSegs = getBedSegments(bVal);
@@ -3394,9 +3390,9 @@ function paintBed(fieldName, bedNum) {
     .reduce(function(a,s){ return a + segM(s); }, 0);
   var physicalCapacity = fieldDef ? fieldDef.len * fieldDef.drips : effectiveBedLen;
   var totalUsedInBed = bSegs.reduce(function(a,s){ return a + segM(s); }, 0);
-  /* המגבלה היא הקיבולת הפיזית של הערוגה בלבד.
-     כל משתל תופס את הרוחב שלו, ומשתלים נוספים נערמים עד שהערוגה מתמלאת —
-     ולכן אין להגביל את סך הגידול לרוחב של משתל אחד. */
+  /* התפוסה נקבעת לפי הקיבולת הפיזית של הערוגה בלבד.
+     משתלים עוקבים של אותו גידול נערמים זה לצד זה עד שהערוגה מתמלאת,
+     ולכן אין תקרה נפרדת לכל גידול. */
   var bRemaining = Math.max(0, Math.round(
     (physicalCapacity - totalUsedInBed) * 10
   ) / 10);
@@ -3414,10 +3410,12 @@ function paintBed(fieldName, bedNum) {
   var totalWaves = cropDef ? (cropDef.waves || 1) : 1;
   if (bedsFilledCount === 0) {
     var physicallyFull = (physicalCapacity - totalUsedInBed) <= 0.05;
-    var cropHasSpace = false;   /* אין תקרה נפרדת לגידול — רק הקיבולת הפיזית */
+    /* הערוגה מלאה עכשיו, אבל עדיין נשאר למשתל הזה שטח לשבץ —
+       ולכן אפשר להציע אותו כחליפה שתיכנס כשהשטח יתפנה */
+    var cropHasSpace = metersLeft > 0.05;
     if (physicallyFull && cropHasSpace) {
       if (confirm('הערוגה מלאה פיזית.\nלשבץ את ' + _rotPaintCrop + ' כירק חליפה — שיכנס כשהשטח יתפנה?')) {
-        var seqAdd = Math.round(Math.min(metersLeft, effectiveBedLen - bUsed) * 10) / 10;
+        var seqAdd = Math.round(Math.min(metersLeft, effectiveBedLen) * 10) / 10;
         if (seqAdd > 0.05) {
           var bAllSegs2 = bSegs.filter(function(s){ return s.meters !== null; });
           // retroactively mark any existing segments of same crop+wave as חליפה
