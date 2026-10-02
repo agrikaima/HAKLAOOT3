@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#2d6a4f">
+<title>מחשבון ריסוס — שלושה ברושים ירוקים</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@500;700;900&family=Heebo:wght@400;500;700;900&display=swap');
+
+  *{box-sizing:border-box;margin:0;padding:0}
+
+  :root{
+    --ink:#16261c;
+    --green:#2d6a4f;
+    --deep:#1b4332;
+    --rule:#d5ded6;
+    --paper:#fbfaf6;
+    --warn:#b0521e;
+    --warn-bg:#fdf3ec;
+    --danger:#b91c1c;
+    --danger-bg:#fef2f2;
+  }
+
+  body{
+    font-family:'Heebo',Arial,sans-serif;
+    background:#e9ebe6;color:var(--ink);line-height:1.6;
+    padding:0 0 60px;
+  }
+  .wrap{max-width:780px;margin:0 auto;padding:0 14px}
+
+  header{background:linear-gradient(160deg,var(--deep),#40916c);color:#fff;
+         padding:26px 0 22px;margin-bottom:18px}
+  header .wrap{text-align:center}
+  header h1{font-family:'Frank Ruhl Libre',Georgia,serif;font-size:1.7rem;font-weight:900}
+  header p{font-size:.9rem;opacity:.92;margin-top:3px}
+
+  section{background:var(--paper);border-radius:10px;padding:18px 20px;
+          margin-bottom:14px;box-shadow:0 1px 8px rgba(0,0,0,.06)}
+  section h2{font-family:'Frank Ruhl Libre',serif;font-size:1.15rem;font-weight:700;
+             color:var(--deep);padding-bottom:8px;margin-bottom:13px;
+             border-bottom:2px solid var(--rule)}
+
+  .fields{display:flex;flex-wrap:wrap;gap:13px}
+  .ctl{display:flex;flex-direction:column;gap:4px;flex:1;min-width:132px}
+  .ctl label{font-size:.75rem;font-weight:700;color:#5d6b60}
+  .ctl select,.ctl input{font-family:inherit;font-size:.95rem;padding:9px 10px;
+    border:1px solid var(--rule);border-radius:5px;background:#fff;color:var(--ink)}
+  .ctl .hint{font-size:.7rem;color:#8a968c}
+  select:focus-visible,input:focus-visible{outline:2.5px solid var(--warn);outline-offset:2px}
+
+  /* ── result ── */
+  .result{background:var(--deep);color:#fff;border-radius:10px;padding:20px;margin-bottom:14px}
+  .result .area{font-size:.8rem;opacity:.85;margin-bottom:14px}
+  .big{display:flex;gap:14px;flex-wrap:wrap}
+  .box{flex:1;min-width:140px;background:rgba(255,255,255,.1);
+       border-radius:8px;padding:14px;text-align:center}
+  .box .n{font-family:'Frank Ruhl Libre',serif;font-size:2.1rem;font-weight:700;line-height:1}
+  .box .u{font-size:.76rem;opacity:.85;margin-top:3px}
+  .box .sub{font-size:.7rem;opacity:.7;margin-top:2px}
+
+  .tank{margin-top:14px;padding-top:13px;border-top:1px solid rgba(255,255,255,.2);
+        font-size:.92rem;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .tank b{font-family:'Frank Ruhl Libre',serif;font-size:1.3rem}
+
+  /* ── material card ── */
+  .mat{display:flex;flex-direction:column;gap:9px}
+  .row{display:flex;gap:10px;align-items:flex-start;font-size:.89rem;
+       padding-bottom:8px;border-bottom:1px solid #eef1ed}
+  .row:last-child{border-bottom:0;padding-bottom:0}
+  .row .k{font-weight:700;min-width:96px;flex-shrink:0;color:#5d6b60;font-size:.8rem}
+  .row .v{flex:1}
+
+  .phi{display:inline-block;background:var(--warn-bg);color:var(--warn);
+       font-weight:700;padding:2px 10px;border-radius:12px;font-size:.88rem}
+  .phi.hi{background:var(--danger-bg);color:var(--danger)}
+
+  .note{background:var(--warn-bg);border-right:4px solid var(--warn);
+        padding:11px 13px;border-radius:5px;margin-top:11px;font-size:.85rem}
+  .note.danger{background:var(--danger-bg);border-right-color:var(--danger)}
+  .note b{color:var(--warn)}
+  .note.danger b{color:var(--danger)}
+  .note ul{margin:5px 0 0;padding-right:18px}
+  .note li{margin-bottom:3px}
+
+  table{width:100%;border-collapse:collapse;margin-top:8px;font-size:.84rem}
+  th{text-align:right;font-size:.72rem;color:#5d6b60;font-weight:700;
+     padding:0 7px 6px;border-bottom:1.5px solid var(--rule)}
+  td{padding:7px;border-bottom:1px solid #eef1ed}
+  tr.on{background:#eef6f0;font-weight:700}
+
+  .foot{text-align:center;font-size:.75rem;color:#7d8a7f;padding:18px 14px 0}
+
+  @media print{
+    body{background:#fff}
+    .noprint{display:none !important}
+    section,.result{box-shadow:none;break-inside:avoid}
+    .result{background:#fff;color:var(--ink);border:2px solid var(--deep)}
+    .box{background:#f3f6f3}
+  }
+
+  @media (max-width:560px){
+    .ctl{min-width:100%}
+    .box{min-width:100%}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <h1>🧪 מחשבון ריסוס</h1>
+    <p>שלושה ברושים ירוקים</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+<section class="noprint">
+  <h2>מה מרססים</h2>
+  <div class="fields">
+    <div class="ctl">
+      <label for="mat">חומר</label>
+      <select id="mat" onchange="onMat()"></select>
+    </div>
+    <div class="ctl">
+      <label for="use">גידול / מחלה</label>
+      <select id="use" onchange="calc()"></select>
+    </div>
+  </div>
+  <div class="fields" style="margin-top:13px">
+    <div class="ctl">
+      <label for="field">חלקה</label>
+      <select id="field" onchange="calc()"></select>
+    </div>
+    <div class="ctl">
+      <label for="beds">כמה ערוגות</label>
+      <input type="number" id="beds" value="3" min="1" step="1" oninput="calc()">
+    </div>
+    <div class="ctl">
+      <label for="tank">נפח המרסס (ל׳)</label>
+      <input type="number" id="tank" value="10" min="1" step="1" oninput="calc()">
+    </div>
+  </div>
+</section>
+
+<div class="result" id="result"></div>
+
+<section id="matCard"></section>
+
+<div class="foot noprint">
+  המינונים לפי תוויות היצרן. בכל מקרה של ספק — התווית קובעת.
+</div>
+
+</div>
+
+<script>
+/* ── החלקות ── */
+const FIELDS=[
+  {name:'חול ימין',       len:21,  width:1.5,  beds:9},
+  {name:'חול שמאל',      len:15,  width:1.5,  beds:9},
+  {name:'אילנית ימין',    len:10,  width:1.83, beds:35},
+  {name:'אילנית שמאל',   len:14,  width:1.83, beds:35},
+  {name:'בז ימין',        len:30,  width:1.83, beds:6},
+  {name:'בז שמאל',       len:30,  width:1.83, beds:7},
+  {name:'קיפוד ימין',     len:30,  width:1.83, beds:9},
+  {name:'קיפוד שמאל',    len:30,  width:1.83, beds:7},
+  {name:'פתוח ימין',      len:45,  width:1.83, beds:9},
+  {name:'פתוח שמאל',     len:45,  width:1.83, beds:9},
+  {name:'ספירלה',         len:15,  width:1.5,  beds:1},
+  {name:'גדר ליד מיכה',  len:130, width:1.5,  beds:1}
+];
+
+/* ── החומרים, לפי תוויות היצרן ──
+   dose: מינון לדונם · vol: נפח תרסיס לדונם · pct: ריכוז באחוזים (חלופה למינון) */
+const MATS=[
+{
+  id:'probit',
+  name:'פרוביט',
+  sub:'קוטל מזיקים ביולוגי · Bacillus thuringiensis',
+  unit:'גרם',
+  tox:'IV — מסוכן',
+  organic:true,
+  phi:3,
+  against:'זחלים צעירים של עשים ופרפרים — עש הכרוב, פלוסיה, פרודניה, עש האשכול, עש הפרי המזרחי',
+  freq:'מניעתי כל שבועיים · בנגיעות פעילה כל 7 ימים',
+  uses:[
+    {label:'כרוב, כרובית, ברוקולי, קולורבי — פרודניה', dose:[100,200], vol:[30,50]},
+    {label:'כרוב, כרובית, ברוקולי, קולורבי — עש הכרוב', dose:[150,150], vol:[30,50]},
+    {label:'עגבנייה, מסק, גזר, פלפל — פלוסיה',          dose:[50,100],  vol:[40,120]},
+    {label:'עגבנייה, מסק, גזר, פלפל — פרודניה',          dose:[100,200], vol:[40,120]},
+    {label:'תירס — פרודניה',                              dose:[100,200], vol:[20,30]},
+    {label:'בצל — פרודניה, עש הלפת',                      dose:[200,200], vol:[10,60]},
+    {label:'תות שדה — פרודניה',                           dose:[100,200], vol:[30,50]}
+  ],
+  warn:[
+    'לא לרסס בשעות חמות או בזמן פריחה פעילה של דבורים',
+    'הרטבה מלאה משני צדי העלה — הזחל חייב לאכול מהחומר',
+    'יעיל בעיקר על זחלים צעירים — לרסס מיד עם הופעתם',
+    'הזחלים מפסיקים לאכול תוך שעות ומתים תוך 1–4 ימים'
+  ],
+  mix:'מותר עם טימורקס או נימיקס · אסור עם תכשירים אלקליים או שמנים מינרליים',
+  good:'עמיד בחום ו-UV · בטוח לדבורים · מאושר לאורגני · ניתן לשימוש סמוך לקטיף'
+},
+{
+  id:'helio',
+  name:'הליוגופרית',
+  sub:'תרחיף גופרית מינרלית · 700 גר׳/ליטר',
+  unit:'סמ״ק',
+  tox:'IV — מסוכן',
+  organic:true,
+  phi:3,
+  against:'קימחון, קימחונית, אקרית החלודה',
+  freq:'כל 7–14 ימים לפי עוצמת הנגיעות',
+  uses:[
+    {label:'פלפל, פפריקה — קימחונית',      pct:1,         vol:[50,50]},
+    {label:'עגבנייה — קימחונית',            pct:1,         vol:[50,50]},
+    {label:'גזר — קמחון הגזר',              dose:[150,200],vol:[25,40]},
+    {label:'מלון שדה פתוח — קימחון הדלועים',pct:0.5,       vol:[100,100]},
+    {label:'קשוא שדה פתוח — קימחון הדלועים',dose:[200,400],vol:[25,50]},
+    {label:'תות שדה — קמחון תות שדה',       dose:[350,350],vol:[50,50]},
+    {label:'מנגו — קימחון המנגו',           pct:0.5,       vol:[100,150]},
+    {label:'פטרוזיליה, שמיר — קימחון',      pct:1,         vol:[30,40]}
+  ],
+  warn:[
+    'אין לרסס בטמפרטורה מעל 28°C',
+    'חשוב לכסות את כל הצמח — כולל ציר הפרי',
+    'בשמיר ופטרוזיליה: עד שבוע לאחר קציר, בריכוז 0.5%'
+  ],
+  mix:'אסור לשלב עם שמן · בין ריסוס שמן לריסוס הליוגופרית — לפחות חודש',
+  good:'התכשיר אינו פוגע בצרעות אנגירוס ופשפשי אוריוס · מאושר לאורגני'
+},
+{
+  id:'kocide',
+  name:'קוציד 2000',
+  sub:'קוטל פטריות וחיידקים · נחושת 53.8%',
+  unit:'גרם',
+  tox:'III — מסוכן לבריאות',
+  organic:true,
+  phi:7,
+  against:'מחלות פטרייתיות וחיידקיות — ניקוד חיידקי, כתמי עלים, כימשון, קמחון, חלפת',
+  freq:'מניעה כל 7–14 יום · עם הופעת המחלה — לצופף לפעמיים בשבוע',
+  uses:[
+    {label:'עגבנייה — ניקוד חיידקי',          pct:[0.25,0.4], vol:[30,50]},
+    {label:'עגבנייה — כימשון',                 dose:[100,200], vol:[30,50]},
+    {label:'פלפל — כתמי עלים חיידקיים',        pct:[0.25,0.4], vol:[30,50]},
+    {label:'תפוח אדמה — ריקבון רך חיידקי',     dose:[200,200], vol:[10,30]},
+    {label:'תפוח אדמה — כימשון',               dose:[100,200], vol:[20,40]},
+    {label:'מלפפון, מלון — כתמים מצולעים',     pct:0.25,       vol:[30,50]},
+    {label:'גזר — קמחון הגזר, חלפת הגזר',      dose:[200,200], vol:[10,40]},
+    {label:'גפן — כשותית הגפן',                pct:0.25,       vol:null},
+    {label:'זית — עין טווס',                   pct:0.25,       vol:null}
+  ],
+  warn:[
+    'ציוד מגן מלא — סרבל, כסיות, מסיכה, משקפי מגן',
+    'אין כניסה לחלקה 48 שעות אחרי הריסוס',
+    'רעיל לכבשים — אין לאפשר רעיית צאן בשטח שטופל',
+    'רעיל מאוד לדגים — מנע זרימה לבריכות ומקורות מים',
+    'רעיל בבליעה · מזיק בשאיפה · גורם נזק חמור לעיניים'
+  ],
+  mix:'בערבוב — קוציד נכנס ראשון, ורק אחריו תכשירים נוספים · באורגני רק עם תכשירים מאושרים',
+  good:'מאושר לאורגני · רעילות נמוכה לדבורים'
+}
+];
+
+/* ── עזר ── */
+function el(id){ return document.getElementById(id); }
+function num(a){ return Array.isArray(a) ? a : [a,a]; }
+function fmt(n){
+  if (n >= 100) return Math.round(n).toLocaleString('he-IL');
+  if (n >= 10)  return (Math.round(n*10)/10).toString();
+  return (Math.round(n*100)/100).toString();
+}
+function range(lo,hi,u){
+  return (Math.abs(hi-lo) < 0.001) ? fmt(lo)+' '+u : fmt(lo)+'–'+fmt(hi)+' '+u;
+}
+
+/* ── אתחול ── */
+el('mat').innerHTML  = MATS.map(function(m,i){ return '<option value="'+i+'">'+m.name+'</option>'; }).join('');
+el('field').innerHTML = FIELDS.map(function(f){
+  return '<option value="'+f.name+'">'+f.name+' ('+f.len+'מ׳)</option>';
+}).join('');
+el('field').value = 'פתוח שמאל';
+
+function onMat(){
+  const m = MATS[+el('mat').value];
+  el('use').innerHTML = m.uses.map(function(u,i){ return '<option value="'+i+'">'+u.label+'</option>'; }).join('');
+  calc();
+}
+
+function calc(){
+  const m    = MATS[+el('mat').value];
+  const u    = m.uses[+el('use').value] || m.uses[0];
+  const f    = FIELDS.find(function(x){ return x.name === el('field').value; }) || FIELDS[0];
+  const beds = Math.max(1, Number(el('beds').value) || 1);
+  const tankL= Math.max(1, Number(el('tank').value) || 10);
+
+  const m2    = f.len * f.width * beds;
+  const dunam = m2 / 1000;
+
+  /* נפח התרסיס */
+  const v = u.vol ? num(u.vol) : null;
+  const waterLo = v ? v[0] * dunam : null;
+  const waterHi = v ? v[1] * dunam : null;
+
+  /* כמות החומר: לפי מינון לדונם, או לפי אחוז מנפח המים */
+  let matLo, matHi, basis;
+  if (u.dose) {
+    const d = num(u.dose);
+    matLo = d[0] * dunam;
+    matHi = d[1] * dunam;
+    basis = 'מינון לדונם';
+  } else {
+    const p = num(u.pct);
+    matLo = waterLo ? waterLo * 1000 * (p[0]/100) : null;
+    matHi = waterHi ? waterHi * 1000 * (p[1]/100) : null;
+    basis = 'ריכוז מנפח המים';
+  }
+
+  /* כמה למיכל */
+  let perTankLo = null, perTankHi = null;
+  if (u.dose && v) {
+    const d = num(u.dose);
+    perTankLo = (d[0] / v[1]) * tankL;   /* נפח גדול = ריכוז נמוך */
+    perTankHi = (d[1] / v[0]) * tankL;
+  } else if (u.pct) {
+    const p = num(u.pct);
+    perTankLo = tankL * 1000 * (p[0]/100);
+    perTankHi = tankL * 1000 * (p[1]/100);
+  }
+
+  /* כמה מיכלים */
+  const tanks = waterHi ? Math.ceil(waterHi / tankL) : null;
+
+  el('result').innerHTML =
+    '<div class="area">' + beds + ' ערוגות ב' + f.name +
+      ' · ' + fmt(m2) + ' מ״ר · <b>' + fmt(dunam) + ' דונם</b></div>' +
+    '<div class="big">' +
+      (waterLo !== null
+        ? '<div class="box"><div class="n">' + fmt(waterHi) + '</div>' +
+          '<div class="u">ליטר מים</div>' +
+          (Math.abs(waterHi-waterLo) > 0.05 ? '<div class="sub">טווח: ' + fmt(waterLo) + '–' + fmt(waterHi) + '</div>' : '') +
+          '</div>'
+        : '<div class="box"><div class="n">—</div><div class="u">להרטבה מלאה</div></div>') +
+      (matLo !== null
+        ? '<div class="box"><div class="n">' + fmt(matHi) + '</div>' +
+          '<div class="u">' + m.unit + ' ' + m.name + '</div>' +
+          (Math.abs(matHi-matLo) > 0.05 ? '<div class="sub">טווח: ' + fmt(matLo) + '–' + fmt(matHi) + '</div>' : '') +
+          '</div>'
+        : '') +
+    '</div>' +
+    (perTankLo !== null
+      ? '<div class="tank">🪣 במרסס של ' + tankL + ' ליטר: <b>' +
+        range(perTankLo, perTankHi, m.unit) + '</b>' +
+        (tanks ? '<span style="opacity:.75">· ' + tanks + ' מילויים לכל השטח</span>' : '') +
+        '</div>'
+      : '') +
+    '<div class="tank" style="font-size:.8rem;opacity:.8">🧮 ' + basis + '</div>';
+
+  renderCard(m, u);
+}
+
+function renderCard(m, u){
+  const phiCls = m.phi >= 7 ? 'phi hi' : 'phi';
+  let html = '<h2>' + m.name + '</h2>' +
+    '<div style="font-size:.84rem;color:#5d6b60;margin:-6px 0 12px">' + m.sub + '</div>' +
+    '<div class="mat">' +
+      '<div class="row"><span class="k">המתנה לקטיף</span><span class="v">' +
+        '<span class="' + phiCls + '">' + m.phi + ' ימים</span></span></div>' +
+      '<div class="row"><span class="k">נגד</span><span class="v">' + m.against + '</span></div>' +
+      '<div class="row"><span class="k">תדירות</span><span class="v">' + m.freq + '</span></div>' +
+      '<div class="row"><span class="k">רעילות</span><span class="v">' + m.tox +
+        (m.organic ? ' · מאושר לחקלאות אורגנית' : '') + '</span></div>' +
+      '<div class="row"><span class="k">שילובים</span><span class="v">' + m.mix + '</span></div>' +
+      (m.good ? '<div class="row"><span class="k">יתרונות</span><span class="v">' + m.good + '</span></div>' : '') +
+    '</div>' +
+    '<div class="note' + (m.phi >= 7 ? ' danger' : '') + '"><b>לשים לב</b><ul>' +
+      m.warn.map(function(w){ return '<li>' + w + '</li>'; }).join('') +
+    '</ul></div>' +
+    '<h2 style="margin-top:18px">מינונים לפי תווית</h2>' +
+    '<table><thead><tr><th>גידול / מחלה</th><th>מינון</th><th>נפח (ל׳/ד׳)</th></tr></thead><tbody>' +
+    m.uses.map(function(x){
+      const on = (x.label === u.label) ? ' class="on"' : '';
+      let dose;
+      if (x.dose) { const d = num(x.dose); dose = range(d[0], d[1], m.unit + '/ד׳'); }
+      else { const p = num(x.pct); dose = (p[0] === p[1] ? p[0] + '%' : p[0] + '–' + p[1] + '%'); }
+      const vol = x.vol ? (num(x.vol)[0] === num(x.vol)[1] ? num(x.vol)[0] : num(x.vol)[0] + '–' + num(x.vol)[1]) : 'להרטבה מלאה';
+      return '<tr' + on + '><td>' + x.label + '</td><td>' + dose + '</td><td>' + vol + '</td></tr>';
+    }).join('') +
+    '</tbody></table>';
+  el('matCard').innerHTML = html;
+}
+
+onMat();
+</script>
+</body>
+</html>
