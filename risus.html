@@ -41,6 +41,15 @@
              color:var(--deep);padding-bottom:8px;margin-bottom:13px;
              border-bottom:2px solid var(--rule)}
 
+  #logBox button{font-family:inherit;font-size:1rem;font-weight:700;color:#fff;
+    background:var(--green);border:0;border-radius:8px;padding:12px 20px;
+    margin-top:15px;cursor:pointer;width:100%}
+  #logBox button:active{background:var(--deep)}
+  #logBox button:disabled{opacity:.5;cursor:default}
+  #logBox .msg{font-size:.76rem;color:#5d6b60;margin-top:9px;line-height:1.5}
+  #logBox .msg.ok{color:var(--green);font-weight:700}
+  #logBox .msg.err{color:var(--danger);font-weight:700}
+
   .fields{display:flex;flex-wrap:wrap;gap:13px}
   .ctl{display:flex;flex-direction:column;gap:4px;flex:1;min-width:132px}
   .ctl label{font-size:.75rem;font-weight:700;color:#5d6b60}
@@ -145,6 +154,36 @@
 </section>
 
 <div class="result" id="result"></div>
+
+<section class="noprint" id="logBox">
+  <h2>רישום הריסוס</h2>
+  <div class="fields">
+    <div class="ctl">
+      <label for="lg-date">תאריך הריסוס</label>
+      <input type="date" id="lg-date">
+    </div>
+    <div class="ctl">
+      <label for="lg-beds">מספרי הערוגות</label>
+      <input type="text" id="lg-beds" placeholder="4, 5, 6">
+    </div>
+    <div class="ctl">
+      <label for="lg-by">מי ריסס</label>
+      <input type="text" id="lg-by" placeholder="שם">
+    </div>
+  </div>
+  <div class="fields" style="margin-top:13px">
+    <div class="ctl">
+      <label for="lg-season">עונה</label>
+      <input type="text" id="lg-season" placeholder="אביב-קיץ 2026">
+    </div>
+    <div class="ctl" style="flex:2.2">
+      <label for="lg-notes">הערות</label>
+      <input type="text" id="lg-notes" placeholder="מזג אוויר, נגיעות, מה שחשוב לזכור">
+    </div>
+  </div>
+  <button type="button" id="lg-btn" onclick="logSpray()">✓ רשום במלאכת ערוגות</button>
+  <div class="msg" id="lg-msg">הרישום נכנס למלאכת ערוגות בפתיחה הבאה של האפליקציה, ומשם מסתנכרן לגיליון.</div>
+</section>
 
 <section id="matCard"></section>
 
@@ -391,7 +430,104 @@ function renderCard(m, u){
   el('matCard').innerHTML = html;
 }
 
+/* ── רישום הריסוס אל מלאכת ערוגות ──
+   הרשומה נכתבת לתיבת דואר בזיכרון המקומי (sprayInbox), והאפליקציה
+   קולטת אותה בפתיחה הבאה ומסנכרנת לגיליון. הכתיבה דרך תיבה ולא
+   ישירות ל-plantings — כדי שלשונית אפליקציה פתוחה במקביל לא תדרוס. */
+
+function lsGet(key, fallback){
+  try { var v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
+  catch(e){ return fallback; }
+}
+
+function phiDate(d, days){
+  if (!d) return '';
+  var dt = new Date(d + 'T00:00:00');
+  dt.setDate(dt.getDate() + (Number(days) || 0));
+  return dt.toISOString().split('T')[0];
+}
+
+function heDate(d){
+  return d ? d.split('-').reverse().join('/') : '';
+}
+
+function initLog(){
+  el('lg-date').value = new Date().toISOString().split('T')[0];
+  /* העונה נלקחת מהרשומה האחרונה שנכתבה באפליקציה */
+  var recs = lsGet('plantings', []);
+  if (Array.isArray(recs)) {
+    for (var i = 0; i < recs.length; i++) {
+      if (recs[i] && recs[i].season) { el('lg-season').value = recs[i].season; break; }
+    }
+  }
+}
+
+function logSpray(){
+  var m     = MATS[+el('mat').value];
+  var u     = m.uses[+el('use').value] || m.uses[0];
+  var f     = FIELDS.find(function(x){ return x.name === el('field').value; }) || FIELDS[0];
+  var beds  = Math.max(1, Number(el('beds').value) || 1);
+  var tankL = Math.max(1, Number(el('tank').value) || 10);
+  var date  = el('lg-date').value;
+  var msg   = el('lg-msg');
+
+  if (!date){ msg.className = 'msg err'; msg.textContent = 'צריך תאריך ריסוס.'; return; }
+
+  var dunam = (f.len * f.width * beds) / 1000;
+  var v = u.vol ? num(u.vol) : null;
+  var waterHi = v ? v[1] * dunam : null;
+
+  var doseTxt;
+  if (u.dose) { var d = num(u.dose); doseTxt = range(d[0]*dunam, d[1]*dunam, m.unit); }
+  else { var p = num(u.pct); doseTxt = (p[0] === p[1] ? p[0] + '%' : p[0] + '–' + p[1] + '%') + ' מנפח המים'; }
+
+  var extra = [beds + ' ערוגות · ' + fmt(dunam) + ' דונם', 'מרסס ' + tankL + ' ל׳'];
+  if (el('lg-notes').value.trim()) extra.push(el('lg-notes').value.trim());
+
+  var rec = {
+    id: Date.now(),
+    recType: 'spray',
+    season: el('lg-season').value.trim(),
+    date: date,
+    field: f.name,
+    bed: el('lg-beds').value.trim(),
+    variety:'', qty:'', rows:'', shoots:'', distPlant:'',
+    clearVariety:'', harvestWeight:'', lastHarvest:'',
+    seedVariety:'', seedQty:'', seedUnit:'', seedDepth:'',
+    seedRows:'', seedDist:'', seedMethod:'',
+    sprayMaterial: m.name,
+    sprayTarget:   u.label,
+    sprayDose:     doseTxt,
+    sprayVolume:   waterHi !== null ? fmt(waterHi) : '',
+    sprayPHI:      m.phi,
+    sprayBy:       el('lg-by').value.trim(),
+    sprayUntil:    phiDate(date, m.phi),
+    notes: extra.join(' · '),
+    log: [], synced: false,
+    createdAt: new Date().toISOString(),
+    source: 'מחשבון ריסוס'
+  };
+
+  var inbox = lsGet('sprayInbox', []);
+  if (!Array.isArray(inbox)) inbox = [];
+  inbox.push(rec);
+  try { localStorage.setItem('sprayInbox', JSON.stringify(inbox)); }
+  catch(e){ msg.className = 'msg err'; msg.textContent = 'לא הצלחתי לשמור. נסי שוב.'; return; }
+
+  var btn = el('lg-btn');
+  btn.disabled = true;
+  setTimeout(function(){ btn.disabled = false; }, 1500);
+
+  msg.className = 'msg ok';
+  msg.textContent = '✓ נרשם: ' + m.name + ' · ' + f.name +
+    (rec.bed ? ' · ערוגות ' + rec.bed : '') +
+    ' · אין לקטוף עד ' + heDate(rec.sprayUntil) +
+    '. פתחי את האפליקציה כדי שייכנס ויסתנכרן לגיליון.';
+  el('lg-notes').value = '';
+}
+
 onMat();
+initLog();
 </script>
 </body>
 </html>
