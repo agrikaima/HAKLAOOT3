@@ -1714,6 +1714,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // מצב קיפול הטופס
     toggleBedForm(localStorage.getItem('bedFormOpen') !== '0');
   } catch(e) {}
+
+  // ריסוסים שנרשמו במחשבון בזמן שהאפליקציה לא הייתה פתוחה
+  drainSprayInbox();
+});
+
+// חזרה לאפליקציה מלשונית המחשבון — קליטה מיידית, בלי צורך ברענון
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) drainSprayInbox();
 });
 
 function today() { return new Date().toISOString().split('T')[0]; }
@@ -6853,8 +6861,36 @@ function clearData() {
   plantings=[];save();renderList();showToast('נמחק');
 }
 
+// ── קליטת ריסוסים ממחשבון הריסוס ──────────────
+// מחשבון הריסוס (risus.html) כותב לתיבה sprayInbox בזיכרון המקומי.
+// כאן קולטים אותה אל plantings, כותבים לגיליון ומרוקנים את התיבה.
+// נקרא בפתיחת האפליקציה ובכל חזרה אליה מלשונית אחרת.
+async function drainSprayInbox() {
+  let inbox;
+  try { inbox = JSON.parse(localStorage.getItem('sprayInbox') || '[]'); }
+  catch(e) { localStorage.removeItem('sprayInbox'); return; }
+  if (!Array.isArray(inbox) || !inbox.length) return;
+
+  // מניעת כפילות אם התיבה כבר נקלטה
+  const have = new Set(plantings.map(p => String(p.id)));
+  const fresh = inbox.filter(r => r && r.recType === 'spray' && !have.has(String(r.id)));
+
+  localStorage.removeItem('sprayInbox');
+  if (!fresh.length) return;
+
+  for (const rec of fresh) {
+    rec.synced = settings.scriptUrl ? await sendToSheets(rec) : false;
+    plantings.unshift(rec);
+  }
+  save();
+  renderList();
+  showToast(fresh.length === 1
+    ? '🧪 ריסוס נקלט ממחשבון הריסוס'
+    : '🧪 ' + fresh.length + ' ריסוסים נקלטו ממחשבון הריסוס');
+}
+
 // ── Helpers ───────────────────────────────────
-function save() { 
+function save() {
   localStorage.setItem('plantings',JSON.stringify(plantings)); 
   syncToSheets(); 
 }
