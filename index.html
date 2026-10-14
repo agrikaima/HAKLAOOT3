@@ -184,7 +184,11 @@
     .sdot.ok{background:#10b981}.sdot.err{background:var(--red)}
 
     /* rotation planner */
-    .rot-bed-cell{border-radius:7px;padding:5px 6px;border:1.5px solid var(--border);background:#fff;min-width:0;transition:transform .1s}
+    .rot-bed-cell{border-radius:7px;padding:5px 6px;border:1.5px solid var(--border);background:#fff;min-width:0;overflow:hidden;transition:transform .1s}
+    /* שדות המספרים בערוגה צרים מאוד — בלי חיצי ההגדלה שגוזלים רוחב */
+    .rot-bed-cell input[type=number]::-webkit-inner-spin-button,
+    .rot-bed-cell input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+    .rot-bed-cell input[type=number]{-moz-appearance:textfield;appearance:textfield;max-width:100%}
     .rot-bed-cell.bed-idle{border:2px solid #111827}
     .rot-bed-cell.bed-overdue{border:2px solid #d97706;box-shadow:0 0 0 2px #fde68a inset}
     .rot-bed-cell.rot-conflict{border-color:var(--red);background:#fef2f2}
@@ -3158,20 +3162,24 @@ function _renderRotationPlannerInner() {
              /* תיקון הגודל בפועל — שלוחות או מטרים, אחד נגזר מהשני */
              if (s.meters === null || s.meters === undefined) return '';
              var sh = segShluhot(field.name, s);
-             return '<div style="display:flex;align-items:center;gap:3px;padding-right:9px;margin-top:1px" '
+             var inp = 'flex:1;min-width:0;width:100%;font-size:.56rem;padding:0 2px;'
+                     + 'border:1px solid #a7f3d0;border-radius:3px;text-align:center;'
+                     + 'direction:ltr;box-sizing:border-box;height:15px';
+             var lbl = 'font-size:.53rem;color:#6b7280;flex-shrink:0';
+             return '<div style="padding-right:9px;margin-top:1px;max-width:100%;overflow:hidden" '
                +'onclick="event.stopPropagation()" class="no-print">'
-               +'<input type="number" step="0.5" min="0.5" value="'+sh+'" '
-                 +'title="שלוחות — אפשר חצאים" '
-                 +'style="width:38px;font-size:.58rem;padding:1px 3px;border:1px solid #a7f3d0;'
-                 +'border-radius:3px;text-align:center;direction:ltr;box-sizing:border-box" '
-                 +'onchange="saveSegShluhot(\''+safeField+'\','+i+','+si+',this.value)">'
-               +'<span style="font-size:.56rem;color:#6b7280">שלוחות</span>'
-               +'<input type="number" step="0.5" min="0.5" value="'+s.meters+'" '
-                 +'title="מטרי צינור" '
-                 +'style="width:44px;font-size:.58rem;padding:1px 3px;border:1px solid #a7f3d0;'
-                 +'border-radius:3px;text-align:center;direction:ltr;box-sizing:border-box" '
-                 +'onchange="saveSegMeters(\''+safeField+'\','+i+','+si+',this.value)">'
-               +'<span style="font-size:.56rem;color:#6b7280">מ׳</span>'
+               +'<div style="display:flex;align-items:center;gap:2px">'
+                 +'<span style="'+lbl+'">שלוחות</span>'
+                 +'<input type="number" step="0.5" min="0.5" value="'+sh+'" '
+                   +'title="שלוחות — אפשר חצאים" style="'+inp+'" '
+                   +'onchange="saveSegShluhot(\''+safeField+'\','+i+','+si+',this.value)">'
+               +'</div>'
+               +'<div style="display:flex;align-items:center;gap:2px;margin-top:1px">'
+                 +'<span style="'+lbl+'">מ׳</span>'
+                 +'<input type="number" step="0.5" min="0.5" value="'+s.meters+'" '
+                   +'title="מטרי צינור" style="'+inp+'" '
+                   +'onchange="saveSegMeters(\''+safeField+'\','+i+','+si+',this.value)">'
+               +'</div>'
                +'</div>';
            })()
           +(segNoteVal ? '<div style="font-size:.58rem;color:#7c3aed;padding-right:9px;white-space:normal">'+escHtml(segNoteVal)+'</div>' : '')
