@@ -7088,6 +7088,28 @@ async function restoreVersion(row) {
 setTimeout(ensureUserName, 2500);  
 let harvestRows = [];
 
+/* תאריך הקטיף מגיע מהטופס בכמה צורות: 14/10/2026, 2026-10-14,
+   או חותמת זמן מלאה. המרה לערך מספרי אחיד — כדי שהמיון יהיה
+   מיון תאריכים ולא מיון טקסט (שבו 31/01 גדול מ-14/10). */
+function harvestTime(v) {
+  if (v === undefined || v === null || v === '') return 0;
+  if (v instanceof Date) return v.getTime();
+
+  const s = String(v).trim();
+
+  /* יום/חודש/שנה — גם עם נקודה או מקף */
+  const m = s.match(/^(\d{1,2})[\/\.\-](\d{1,2})[\/\.\-](\d{2,4})/);
+  if (m) {
+    let y = Number(m[3]);
+    if (y < 100) y += 2000;
+    return new Date(y, Number(m[2]) - 1, Number(m[1])).getTime();
+  }
+
+  /* שנה-חודש-יום, או חותמת זמן מלאה */
+  const t = Date.parse(s);
+  return isNaN(t) ? 0 : t;
+}
+
 async function loadHarvest() {
   const list = document.getElementById('harvestList');
   const sum  = document.getElementById('harvestSummary');
@@ -7150,7 +7172,7 @@ function renderHarvest() {
     '</table>';
 
   const sorted = harvestRows.slice().sort(function(a,b){
-    return String(b['תאריך קטיף']||'').localeCompare(String(a['תאריך קטיף']||''));
+    return harvestTime(b['תאריך קטיף']) - harvestTime(a['תאריך קטיף']);
   });
 
   list.innerHTML = '<h3 style="margin:16px 0 8px;font-size:1rem">רשומות אחרונות</h3>' +
