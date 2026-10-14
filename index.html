@@ -2261,6 +2261,100 @@ function _saveSegs(ctx) {
   renderRotationPlanner();
 }
 
+/* ══════ העברת משתל בין ערוגות ══════
+   שתי לחיצות: ✥ על המשתל מרים אותו, לחיצה על ערוגה מניחה אותו שם.
+   המשתל עובר שלם — מצב, תאריך שתילה, ימי גידול, מטרים, כיוון והערה.
+   לא מחיקה והקלדה מחדש, ולכן אין מה לזכור ואין מה לאבד. */
+
+var _rotHeld = null;   /* {field, bed, segIdx, crop} */
+
+function pickUpSegment(fieldName, bedNum, segIdx) {
+  var c = _segOf(fieldName, bedNum, segIdx); if (!c) return;
+
+  /* לחיצה חוזרת על אותו משתל = ביטול ההרמה */
+  if (_rotHeld && _rotHeld.field === fieldName &&
+      _rotHeld.bed === bedNum && _rotHeld.segIdx === segIdx) {
+    cancelHeldSegment();
+    return;
+  }
+
+  _rotHeld = { field: fieldName, bed: bedNum, segIdx: segIdx, crop: c.seg.crop };
+  renderRotationPlanner();
+  showToast('✥ ' + c.seg.crop + ' מורם — לחצי על ערוגת היעד');
+}
+
+function cancelHeldSegment() {
+  if (!_rotHeld) return;
+  var crop = _rotHeld.crop;
+  _rotHeld = null;
+  renderRotationPlanner();
+  showToast(crop + ' — ההעברה בוטלה');
+}
+
+/* בדיקת עומס בערוגה, לאחר שינוי. מחזירה הודעה או מחרוזת ריקה. */
+function _bedOverload(fieldName, segs) {
+  var field = FIELD_DEFS.find(function(f){ return f.name === fieldName; });
+  if (!field) return '';
+  var isDripBed = !!field.drips;
+  var totalDrips = field.drips || 0;
+  var bedLen = field.len || 0;
+  var alongDrips = 0, acrossLen = 0;
+
+  segs.forEach(function(x){
+    var xAlong = (x.orient === 'along') || (!x.orient && isDripBed);
+    var xsp = plantSpecies.find(function(y){ return y.name === x.crop; });
+    var xDrips = (xsp && xsp.drips) ? xsp.drips : 1;
+    if (xAlong) alongDrips += xDrips;
+    else acrossLen += (x.meters || 0);
+  });
+
+  if (totalDrips && alongDrips > totalDrips)
+    return 'הערוגה עמוסה — ' + alongDrips + ' שלוחות מתוך ' + totalDrips;
+  if (bedLen && acrossLen > bedLen + 0.05)
+    return 'הערוגה עמוסה — ' + Math.round(acrossLen) + 'מ׳ מתוך ' + bedLen + 'מ׳';
+  return '';
+}
+
+function dropHeldSegment(fieldName, bedNum) {
+  if (!_rotHeld) return;
+  var h = _rotHeld;
+  var season = document.getElementById('rot-plan-season').value.trim();
+  if (!season) { _rotHeld = null; return; }
+
+  var srcKey = h.field + '_' + h.bed;
+  var dstKey = fieldName + '_' + bedNum;
+
+  /* הונח על עצמו — פשוט ביטול */
+  if (srcKey === dstKey) { cancelHeldSegment(); return; }
+
+  var srcSegs = getBedSegments(rotationPlan[season] && rotationPlan[season][srcKey]);
+  var seg = srcSegs[h.segIdx];
+  if (!seg) { _rotHeld = null; renderRotationPlanner(); return; }
+
+  /* ניתוק מהערוגה המקורית */
+  srcSegs.splice(h.segIdx, 1);
+  if (!srcSegs.length) delete rotationPlan[season][srcKey];
+  else rotationPlan[season][srcKey] = srcSegs;
+
+  /* צירוף לערוגת היעד — האובייקט עובר כמו שהוא */
+  var dstSegs = getBedSegments(rotationPlan[season][dstKey]);
+  dstSegs.push(seg);
+  rotationPlan[season][dstKey] = dstSegs;
+
+  _rotHeld = null;
+  saveRotationPlan();
+  renderRotationPlanner();
+
+  var over = _bedOverload(fieldName, dstSegs);
+  if (over) showToast(seg.crop + ' הועבר · ' + over, 'err');
+  else showToast('✓ ' + seg.crop + ' → ' + fieldName + ' ערוגה ' + bedNum);
+}
+
+/* Escape מבטל הרמה */
+document.addEventListener('keydown', function(e){
+  if (e.key === 'Escape' && _rotHeld) cancelHeldSegment();
+});
+
 /* מצב המשתל: ממתין → הגיע → לא הגיע */
 function cycleSegStatus(fieldName, bedNum, segIdx) {
   var c = _segOf(fieldName, bedNum, segIdx); if (!c) return;
@@ -2861,6 +2955,22 @@ function _renderRotationPlannerInner() {
   const cropOpts = allCrops.map(c=>`<option value="${escAttr(c)}">${escHtml(c)}</option>`).join('');
 
   let html = '';
+
+  /* רצועת הנחיה כשמשתל מורם */
+  if (_rotHeld) {
+    html += '<div style="position:sticky;top:0;z-index:30;background:#f59e0b;color:#fff;'
+      + 'border-radius:8px;padding:9px 12px;margin-bottom:10px;display:flex;'
+      + 'justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;'
+      + 'box-shadow:0 2px 8px rgba(0,0,0,.18)" class="no-print">'
+      + '<span style="font-size:.85rem;font-weight:700">✥ ' + escHtml(_rotHeld.crop)
+      + ' מורם מ' + escHtml(_rotHeld.field) + ' ערוגה ' + _rotHeld.bed
+      + ' — לחצי על ערוגת היעד</span>'
+      + '<button onclick="cancelHeldSegment()" style="font-family:inherit;font-size:.78rem;'
+      + 'font-weight:700;background:#fff;color:#b45309;border:0;border-radius:6px;'
+      + 'padding:5px 12px;cursor:pointer">ביטול</button>'
+      + '</div>';
+  }
+
   FIELD_DEFS.forEach(field => {
     const zoneColor = ZONE_COLORS[field.zone]||'#f9f9f9';
     const zoneLabel = ZONE_LABELS[field.zone]||field.zone;
@@ -2971,6 +3081,15 @@ function _renderRotationPlannerInner() {
              return '<span onclick="event.stopPropagation();toggleSegmentOrient(\''+safeField+'\','+i+','+si+')" '
                +'style="cursor:pointer;background:'+bg+';color:'+fg+';font-size:.62rem;font-weight:700;'
                +'border-radius:4px;padding:0 4px;flex-shrink:0" title="'+ttl+'">'+lbl+'</span>';
+           })()
+          +(function(){
+             var held = _rotHeld && _rotHeld.field === field.name
+                        && _rotHeld.bed === i && _rotHeld.segIdx === si;
+             return '<span onclick="event.stopPropagation();pickUpSegment(\''+safeField+'\','+i+','+si+')" '
+               +'style="cursor:pointer;font-size:.68rem;font-weight:700;padding:0 3px;border-radius:4px;flex-shrink:0;'
+               +(held ? 'background:#f59e0b;color:#fff' : 'color:#0d9488')+'" '
+               +'title="'+(held ? 'מורם — לחצי על ערוגת היעד, או כאן לביטול' : 'העברה לערוגה אחרת')+'" '
+               +'class="no-print">✥</span>';
            })()
           +'<span onclick="event.stopPropagation();(function(){var el=document.getElementById(\''+segNoteId+'\');el.style.display=el.style.display===\'none\'?\'block\':\'none\';if(el.style.display===\'block\')el.focus();})()" style="cursor:pointer;color:#a78bfa;font-size:.65rem;padding:0 2px;flex-shrink:0" title="הערה למשתל">✎</span>'
           +'<span onclick="event.stopPropagation();removeBedSegment(\''+safeField+'\','+i+','+si+')" style="cursor:pointer;color:#ef4444;font-size:.7rem;padding:0 2px;flex-shrink:0" class="no-print">✕</span>'
@@ -3288,6 +3407,9 @@ function selectPaintOrient(o) {
 }
 
 function paintBed(fieldName, bedNum) {
+  /* משתל מורם? הלחיצה על הערוגה מניחה אותו כאן ולא צובעת */
+  if (_rotHeld) { dropHeldSegment(fieldName, bedNum); return; }
+
   if (!_rotPaintCrop) return;
   var season = document.getElementById('rot-plan-season').value.trim();
   if (!season) return;
