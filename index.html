@@ -1243,6 +1243,9 @@
   <!-- פאנל צרכי עונה -->
   <div id="rot-needs-panel"></div>
 
+  <!-- שטח בפועל לפי גידול -->
+  <div id="rot-area-panel"></div>
+
   <!-- פאנל הצעת שיבוץ -->
   <div class="card" id="suggest-panel">
     <div class="section-label" style="cursor:pointer" onclick="toggleSuggestPanel()">🤖 הצע שיבוץ <span id="suggest-toggle" style="float:left;font-size:.8rem">▼ פתח</span></div>
@@ -2261,6 +2264,63 @@ function _saveSegs(ctx) {
   renderRotationPlanner();
 }
 
+/* ══════ גודל המשתל בפועל ══════
+   התכנון נגזר מההזמנה, אבל הגודל האמיתי נקבע רק כשהמשתל מגיע.
+   כאן אפשר לתקן אחרי השתילה, בשתי יחידות:
+     שלוחות — איך שרואים את זה בשדה (3 שלוחות, חצי שלוחה)
+     מטרים  — מטרי צינור
+   אחת נגזרת מהשנייה: מטרים = שלוחות × אורך הערוגה. */
+
+function _bedLenOf(fieldName) {
+  var f = FIELD_DEFS.find(function(x){ return x.name === fieldName; });
+  return (f && f.len) ? f.len : 30;
+}
+
+/* מטרים → שלוחות, מעוגל לחצאים */
+function segShluhot(fieldName, seg) {
+  if (!seg || seg.meters === null || seg.meters === undefined) return null;
+  return Math.round((seg.meters / _bedLenOf(fieldName)) * 2) / 2;
+}
+
+function saveSegShluhot(fieldName, bedNum, segIdx, val) {
+  var c = _segOf(fieldName, bedNum, segIdx); if (!c) return;
+  var n = parseFloat(String(val).replace(',', '.'));
+  if (isNaN(n) || n <= 0) { renderRotationPlanner(); return; }
+  c.seg.meters = Math.round(n * _bedLenOf(fieldName) * 10) / 10;
+  _saveSegs(c);
+  showToast(c.seg.crop + ' — ' + n + ' שלוחות · ' + c.seg.meters + 'מ׳');
+}
+
+function saveSegMeters(fieldName, bedNum, segIdx, val) {
+  var c = _segOf(fieldName, bedNum, segIdx); if (!c) return;
+  var n = parseFloat(String(val).replace(',', '.'));
+  if (isNaN(n) || n <= 0) { renderRotationPlanner(); return; }
+  c.seg.meters = Math.round(n * 10) / 10;
+  _saveSegs(c);
+  var sh = segShluhot(fieldName, c.seg);
+  showToast(c.seg.crop + ' — ' + c.seg.meters + 'מ׳ · ' + sh + ' שלוחות');
+}
+
+/* סיכום משתל אחד: מה תוכנן, מה יצא בפועל, ואיפה הוא יושב */
+function waveSummary(season, cropName, waveNum) {
+  var plan = rotationPlan[season] || {};
+  var actual = 0, spots = [];
+  Object.keys(plan).forEach(function(k){
+    getBedSegments(plan[k]).forEach(function(s){
+      if (s.crop !== cropName || (s.wave || 1) !== waveNum) return;
+      actual += (s.meters || 0);
+      var cut = k.lastIndexOf('_');
+      var fName = k.slice(0, cut), bNum = k.slice(cut + 1);
+      spots.push({ field: fName, bed: bNum, shluhot: segShluhot(fName, s) });
+    });
+  });
+  var def = plantDefs.find(function(d){
+    return d.name === cropName && normSeason(d.season) === normSeason(season);
+  });
+  var planned = def ? Math.round(calcDef(def).dripMeters * 10) / 10 : null;
+  return { planned: planned, actual: Math.round(actual * 10) / 10, spots: spots };
+}
+
 /* ══════ העברת משתל בין ערוגות ══════
    שתי לחיצות: ✥ על המשתל מרים אותו, לחיצה על ערוגה מניחה אותו שם.
    המשתל עובר שלם — מצב, תאריך שתילה, ימי גידול, מטרים, כיוון והערה.
@@ -3094,6 +3154,26 @@ function _renderRotationPlannerInner() {
           +'<span onclick="event.stopPropagation();(function(){var el=document.getElementById(\''+segNoteId+'\');el.style.display=el.style.display===\'none\'?\'block\':\'none\';if(el.style.display===\'block\')el.focus();})()" style="cursor:pointer;color:#a78bfa;font-size:.65rem;padding:0 2px;flex-shrink:0" title="הערה למשתל">✎</span>'
           +'<span onclick="event.stopPropagation();removeBedSegment(\''+safeField+'\','+i+','+si+')" style="cursor:pointer;color:#ef4444;font-size:.7rem;padding:0 2px;flex-shrink:0" class="no-print">✕</span>'
           +'</div>'
+          +(function(){
+             /* תיקון הגודל בפועל — שלוחות או מטרים, אחד נגזר מהשני */
+             if (s.meters === null || s.meters === undefined) return '';
+             var sh = segShluhot(field.name, s);
+             return '<div style="display:flex;align-items:center;gap:3px;padding-right:9px;margin-top:1px" '
+               +'onclick="event.stopPropagation()" class="no-print">'
+               +'<input type="number" step="0.5" min="0.5" value="'+sh+'" '
+                 +'title="שלוחות — אפשר חצאים" '
+                 +'style="width:38px;font-size:.58rem;padding:1px 3px;border:1px solid #a7f3d0;'
+                 +'border-radius:3px;text-align:center;direction:ltr;box-sizing:border-box" '
+                 +'onchange="saveSegShluhot(\''+safeField+'\','+i+','+si+',this.value)">'
+               +'<span style="font-size:.56rem;color:#6b7280">שלוחות</span>'
+               +'<input type="number" step="0.5" min="0.5" value="'+s.meters+'" '
+                 +'title="מטרי צינור" '
+                 +'style="width:44px;font-size:.58rem;padding:1px 3px;border:1px solid #a7f3d0;'
+                 +'border-radius:3px;text-align:center;direction:ltr;box-sizing:border-box" '
+                 +'onchange="saveSegMeters(\''+safeField+'\','+i+','+si+',this.value)">'
+               +'<span style="font-size:.56rem;color:#6b7280">מ׳</span>'
+               +'</div>';
+           })()
           +(segNoteVal ? '<div style="font-size:.58rem;color:#7c3aed;padding-right:9px;white-space:normal">'+escHtml(segNoteVal)+'</div>' : '')
           +'<input id="'+segNoteId+'" type="text" value="'+escAttr(segNoteVal)+'" placeholder="הערה למשתל זה..." '
           +'onclick="event.stopPropagation()" '
@@ -3383,6 +3463,7 @@ function _renderRotationPlannerInner() {
   updateRotationSummary(season);
   updateRotationPrevSeasons(season);
   renderRotationNeeds(season);
+  renderCropAreas(season);
 }
 
 function selectPaintCrop(name) {
@@ -3471,14 +3552,10 @@ function paintBed(fieldName, bedNum) {
     return Math.round(total * 10) / 10;
   }
 
-  // check if this wave already fully assigned
-  if (cropDef && metersToAdd !== null) {
-    var totalNeededWave = Math.round(calcDef(cropDef).dripMeters * 10) / 10;
-    if (countAssigned(activeWave) >= totalNeededWave - 0.05) {
-      showToast('✓ ' + _rotPaintCrop + ' משתל ' + activeWave + ' כבר שובץ במלואו (' + totalNeededWave + 'מ׳)', 'err');
-      return;
-    }
-  }
+  /* התכנון הוא הערכה ולא תקרה. משתל יכול להגיע גדול מהמתוכנן —
+     פחות פחת במגשים, 550 שתילים במקום 450 — ואז הוא נשפך על
+     שלוחות שלא היו בתכנון. לכן אין כאן חסימה: כשהמתוכנן נגמר
+     ממשיכים בתוספת של שלוחה אחת בלחיצה, עם אזהרה. */
   var perClickMax = effectiveBedLen;
 
   // spacing conflict check: warn if another crop in this bed has same dist
@@ -3508,11 +3585,11 @@ function paintBed(fieldName, bedNum) {
   var totalNeededWave2 = Math.round(calcDef(cropDef).dripMeters * 10) / 10;
   var stillNeeded = Math.round((totalNeededWave2 - countAssigned(activeWave)) * 10) / 10;
 
+  /* המתוכנן נגמר אבל המשתל עוד לא — ממשיכים שלוחה בכל לחיצה */
+  var overQuota = false;
   if (stillNeeded <= 0.05) {
-    showToast('המשתל שובץ במלואו — עבר לערוגה הבאה', 'err');
-    saveRotationPlan();
-    renderRotationPlanner();
-    return;
+    overQuota = true;
+    stillNeeded = Math.round((fieldDef ? fieldDef.len : effectiveBedLen) * 10) / 10;
   }
 
   // fill only the clicked bed
@@ -3566,6 +3643,10 @@ function paintBed(fieldName, bedNum) {
     } else {
       showToast('הערוגה מלאה למשתל ' + activeWave + ' (' + effectiveBedLen + 'מ׳)');
     }
+  } else if (overQuota) {
+    var actualNow = countAssigned(activeWave);
+    showToast('⚠ משתל ' + activeWave + ' מעל המתוכנן — ' + actualNow +
+              'מ׳ בפועל מתוך ' + totalNeededWave2 + 'מ׳ שתוכננו');
   } else if (metersLeft > 0.05) {
     showToast('שובצו ' + bedsFilledCount + ' ערוגות — נשאר ' + metersLeft + 'מ׳ (המשך בשדה אחר)');
   } else if (totalWaves > 1 && activeWave < totalWaves) {
@@ -3575,6 +3656,122 @@ function paintBed(fieldName, bedNum) {
   }
   saveRotationPlan();
   renderRotationPlanner();
+}
+
+/* ══════ שטח בפועל לפי גידול ══════
+   מטרי צינור → שטח פיזי: (מטרים ÷ שלוחות בערוגה) × רוחב הערוגה.
+   לדוגמה בפתוח שמאל — 180 מטרי צינור הם 4 שלוחות × 45מ׳,
+   כלומר 45 × 1.83 = 82.35 מ״ר, בדיוק ערוגה שלמה. */
+
+function segArea(fieldName, seg) {
+  var f = FIELD_DEFS.find(function(x){ return x.name === fieldName; });
+  if (!f || !seg || !seg.meters) return 0;
+  var drips = f.drips || 1;
+  var width = f.width || 1.83;
+  return (seg.meters / drips) * width;
+}
+
+function cropAreaSummary(season) {
+  var plan = rotationPlan[season] || {};
+  var byCrop = {};
+
+  Object.keys(plan).forEach(function(k){
+    var cut = k.lastIndexOf('_');
+    var fName = k.slice(0, cut);
+    getBedSegments(plan[k]).forEach(function(s){
+      if (!s.crop || s.crop === 'מנוחה' || s.crop === '?') return;
+      if (!byCrop[s.crop]) byCrop[s.crop] = { meters:0, area:0, waves:{}, beds:{} };
+      var e = byCrop[s.crop];
+      e.meters += (s.meters || 0);
+      e.area   += segArea(fName, s);
+      e.waves[s.wave || 1] = true;
+      e.beds[k] = true;
+    });
+  });
+
+  return Object.keys(byCrop).sort(function(a,b){
+    return byCrop[b].area - byCrop[a].area;
+  }).map(function(name){
+    var e = byCrop[name];
+    var def = plantDefs.find(function(d){
+      return d.name === name && normSeason(d.season) === normSeason(season);
+    });
+    var plannedM = null;
+    if (def) {
+      var c = calcDef(def);
+      plannedM = Math.round(c.dripMeters * (def.waves || 1) * 10) / 10;
+    }
+    return {
+      crop: name,
+      meters:  Math.round(e.meters * 10) / 10,
+      plannedMeters: plannedM,
+      area:    Math.round(e.area),
+      dunam:   Math.round(e.area / 1000 * 100) / 100,
+      waves:   Object.keys(e.waves).length,
+      beds:    Object.keys(e.beds).length
+    };
+  });
+}
+
+function renderCropAreas(season) {
+  var el = document.getElementById('rot-area-panel');
+  if (!el) return;
+  if (!season) { el.innerHTML = ''; return; }
+
+  var rows = cropAreaSummary(season);
+  if (!rows.length) { el.innerHTML = ''; return; }
+
+  var totalArea  = rows.reduce(function(a,r){ return a + r.area; }, 0);
+  var totalDunam = Math.round(totalArea / 1000 * 100) / 100;
+
+  el.innerHTML =
+    '<div class="card" style="margin-bottom:10px;border:1.5px solid #86efac;background:#f0fdf4">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">'
+      + '<div class="section-label" style="margin:0">📐 שטח בפועל לפי גידול</div>'
+      + '<div style="font-size:.82rem;font-weight:700;color:#166534">'
+        + 'סה״כ ' + totalArea.toLocaleString('he-IL') + ' מ״ר · ' + totalDunam + ' דונם</div>'
+    + '</div>'
+    + '<div style="overflow-x:auto">'
+    + '<table style="width:100%;border-collapse:collapse;font-size:.78rem">'
+      + '<thead><tr style="background:#dcfce7">'
+        + '<th style="padding:5px 6px;text-align:right">גידול</th>'
+        + '<th style="padding:5px 6px;text-align:center">מ״ר</th>'
+        + '<th style="padding:5px 6px;text-align:center">דונם</th>'
+        + '<th style="padding:5px 6px;text-align:center">מטרי צינור</th>'
+        + '<th style="padding:5px 6px;text-align:center">תוכנן</th>'
+        + '<th style="padding:5px 6px;text-align:center">משתלים</th>'
+        + '<th style="padding:5px 6px;text-align:center">ערוגות</th>'
+      + '</tr></thead><tbody>'
+    + rows.map(function(r){
+        var c = _rotCropColors[r.crop] || '#9ca3af';
+        var diff = '';
+        if (r.plannedMeters) {
+          var d = Math.round((r.meters - r.plannedMeters) * 10) / 10;
+          if (Math.abs(d) > 0.5) {
+            var up = d > 0;
+            diff = '<span style="font-size:.7rem;font-weight:700;color:'
+                 + (up ? '#b45309' : '#6b7280') + '"> ' + (up ? '+' : '') + d + '</span>';
+          }
+        }
+        return '<tr style="border-bottom:1px solid #d1fae5">'
+          + '<td style="padding:5px 6px;font-weight:600">'
+            + '<span style="display:inline-block;width:7px;height:7px;background:'+c+';border-radius:50%;margin-left:4px"></span>'
+            + escHtml(r.crop) + '</td>'
+          + '<td style="padding:5px 6px;text-align:center">' + r.area.toLocaleString('he-IL') + '</td>'
+          + '<td style="padding:5px 6px;text-align:center;font-weight:700">' + r.dunam + '</td>'
+          + '<td style="padding:5px 6px;text-align:center">' + r.meters + '</td>'
+          + '<td style="padding:5px 6px;text-align:center;color:#6b7280">'
+            + (r.plannedMeters !== null ? r.plannedMeters + diff : '—') + '</td>'
+          + '<td style="padding:5px 6px;text-align:center">' + r.waves + '</td>'
+          + '<td style="padding:5px 6px;text-align:center">' + r.beds + '</td>'
+        + '</tr>';
+      }).join('')
+    + '</tbody></table></div>'
+    + '<div style="font-size:.7rem;color:#15803d;margin-top:7px;line-height:1.6">'
+      + 'השטח מחושב מהשיבוץ בפועל, אחרי כל תיקון שעשית בשלוחות או במטרים. '
+      + 'עמודת ״תוכנן״ היא מטרי הצינור לפי ההזמנה — הפער מוצג לידה.'
+    + '</div>'
+    + '</div>';
 }
 
 function renderRotationNeeds(season) {
