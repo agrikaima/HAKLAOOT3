@@ -3127,15 +3127,19 @@ function _renderRotationPlannerInner() {
         var waveDateSpan = waveDateStr ? '<span style="font-size:.55rem;color:#0369a1;margin-left:1px;flex-shrink:0">'+waveDateStr+'</span>' : '';
         var segNoteId = 'segnote-'+safeField+'_'+i+'_'+si;
         var segNoteVal = s.note || '';
-        segList += '<div style="display:flex;align-items:flex-start;gap:2px;font-size:.63rem;line-height:1.4">'
+        /* השם מקבל את כל רוחב המשבצת, והאייקונים יורדים לשורה משלהם.
+           בשורה אחת הם גזלו כ-60 פיקסל מתוך 110, ולכן שמות כמו
+           "סלרי סאמבה" נשברו באמצע מילה. */
+        segList += '<div style="display:flex;align-items:flex-start;gap:2px;font-size:.63rem;line-height:1.4;flex-wrap:wrap">'
           +'<span style="width:7px;height:7px;background:'+c+';border-radius:50%;flex-shrink:0;margin-top:3px"></span>'
           +'<div style="flex:1;min-width:0">'
           +'<div style="display:flex;align-items:center;gap:2px;flex-wrap:wrap">'
           +waveTag
          +(waveDateStr && si !== 0 ? '<span style="font-size:.68rem;font-weight:700;color:#0369a1;flex-shrink:0">'+waveDateStr+'</span>' : '')
           +'</div>'
-          +(function(){var sp2=plantSpecies.find(function(x){return x.name===s.crop;});var dm=isDripBedSp&&sp2&&sp2.dripBased?(sp2.rows||1):1;return'<div style="font-weight:600;color:#1f2937;word-break:break-word;line-height:1.3">'+escHtml(s.crop)+(s.meters!==null?'<span style="font-weight:400;color:#6b7280"> '+(Math.round(s.meters*dm*10)/10)+'מ׳</span>':'')+'</div>';})()
+          +(function(){var sp2=plantSpecies.find(function(x){return x.name===s.crop;});var dm=isDripBedSp&&sp2&&sp2.dripBased?(sp2.rows||1):1;return'<div style="font-weight:600;color:#1f2937;word-break:normal;overflow-wrap:break-word;line-height:1.3">'+escHtml(s.crop)+(s.meters!==null?'<span style="font-weight:400;color:#6b7280"> '+(Math.round(s.meters*dm*10)/10)+'מ׳</span>':'')+'</div>';})()
           +'</div>'
+          +'<div style="display:flex;align-items:center;gap:3px;width:100%;justify-content:flex-end;margin-top:1px">'
           +(function(){
              var isAlong = (s.orient === 'along') || (!s.orient && isDripBedSp);
              var lbl = isAlong ? '↕' : '↔';
@@ -3157,6 +3161,7 @@ function _renderRotationPlannerInner() {
            })()
           +'<span onclick="event.stopPropagation();(function(){var el=document.getElementById(\''+segNoteId+'\');el.style.display=el.style.display===\'none\'?\'block\':\'none\';if(el.style.display===\'block\')el.focus();})()" style="cursor:pointer;color:#a78bfa;font-size:.65rem;padding:0 2px;flex-shrink:0" title="הערה למשתל">✎</span>'
           +'<span onclick="event.stopPropagation();removeBedSegment(\''+safeField+'\','+i+','+si+')" style="cursor:pointer;color:#ef4444;font-size:.7rem;padding:0 2px;flex-shrink:0" class="no-print">✕</span>'
+          +'</div>'
           +'</div>'
           +(function(){
              /* תיקון הגודל בפועל — שלוחות או מטרים, אחד נגזר מהשני */
@@ -3461,7 +3466,7 @@ function _renderRotationPlannerInner() {
           <button onclick="fillField('${safeFieldJs}','',document.getElementById('rot-plan-season').value.trim(),true)"
             style="flex-shrink:0;padding:4px 9px;background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:.75rem;color:var(--muted)">נקה</button>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:7px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:7px">
           ${bedsHtml}
         </div>
       </div>`;
