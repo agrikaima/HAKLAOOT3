@@ -3139,7 +3139,9 @@ function _renderRotationPlannerInner() {
           +'</div>'
           +(function(){var sp2=plantSpecies.find(function(x){return x.name===s.crop;});var dm=isDripBedSp&&sp2&&sp2.dripBased?(sp2.rows||1):1;return'<div style="font-weight:600;color:#1f2937;word-break:normal;overflow-wrap:break-word;line-height:1.3">'+escHtml(s.crop)+(s.meters!==null?'<span style="font-weight:400;color:#6b7280"> '+(Math.round(s.meters*dm*10)/10)+'מ׳</span>':'')+'</div>';})()
           +'</div>'
-          +'<div style="display:flex;align-items:center;gap:3px;width:100%;justify-content:flex-end;margin-top:1px">'
+          /* flex:0 0 100% — אסור לה להתכווץ, ולכן היא תמיד יורדת לשורה
+             משלה. עם width:100% בלבד הדפדפן דחס אותה והשם הוא שהתכווץ. */
+          +'<div style="display:flex;align-items:center;gap:3px;flex:0 0 100%;justify-content:flex-end;margin-top:1px">'
           +(function(){
              var isAlong = (s.orient === 'along') || (!s.orient && isDripBedSp);
              var lbl = isAlong ? '↕' : '↔';
