@@ -381,6 +381,51 @@ function wavesOf(def, seasonStart){
   return out;
 }
 
+/* ── מה באמת בשטח ──
+   התכנון בא מההזמנות, אבל המשתל מגיע בגודל אחר ממה שהוזמן ולפעמים
+   עובר ערוגה. כאן קוראים את המצב בפועל מתוך הרוטציה, כדי שהדף
+   המודפס יתאר את השדה ולא את ההזמנה. */
+function actualFor(cropName, season, wave){
+  const plan=L('rotationPlan','{}')[season]||{};
+  let meters=0; const beds={};
+  Object.keys(plan).forEach(key=>{
+    const val=plan[key];
+    const segs=Array.isArray(val)?val:(typeof val==='string'?[{crop:val}]:[]);
+    segs.forEach(s=>{
+      if(String(s.crop||'').trim()!==String(cropName).trim()) return;
+      if(wave!=null && (Number(s.wave)||1)!==wave) return;
+      meters+=Number(s.meters)||0;
+      beds[key]=true;
+    });
+  });
+  return { meters:Math.round(meters*10)/10, beds:Object.keys(beds).length };
+}
+
+/* גידולים שנמצאים ברוטציה ואין להם שורת הזמנה — אחרת הם נעלמים מהדף */
+function unplannedCrops(season, defs){
+  const plan=L('rotationPlan','{}')[season]||{};
+  const known={}; defs.forEach(d=>known[String(d.name).trim()]=true);
+  const out={};
+  Object.keys(plan).forEach(key=>{
+    const val=plan[key];
+    const segs=Array.isArray(val)?val:(typeof val==='string'?[{crop:val}]:[]);
+    const m=String(key).match(/^(.*)_(\d+)$/);
+    const field=m?m[1].trim():String(key).trim();
+    segs.forEach(s=>{
+      const c=String(s.crop||'').trim();
+      if(!c||c==='מנוחה'||c==='?'||known[c]) return;
+      if(!out[c]) out[c]={meters:0,spots:{}};
+      out[c].meters+=Number(s.meters)||0;
+      out[c].spots[field+' ע׳ '+(m?m[2]:'')]=true;
+    });
+  });
+  return Object.keys(out).sort((a,b)=>a.localeCompare(b,'he')).map(c=>({
+    crop:c,
+    meters:Math.round(out[c].meters*10)/10,
+    spots:Object.keys(out[c].spots)
+  }));
+}
+
 /* ── איפה גידול משובץ ── */
 function locationsFor(cropName, season, wave){
   const plan=L('rotationPlan','{}')[season]||{};
@@ -501,6 +546,19 @@ function build(){
           sp.type==='seed'?'זריעה':(sp.type==='transplant'?'שתילה':'')
         ].filter(Boolean).join(' · ')+
         (needM?'<div class="calc">'+plants.toLocaleString('he-IL')+' שתיל = '+needM+'מ׳ שלוחה</div>':'')+
+        (function(){
+          /* מה שבאמת שובץ בשטח, מול מה שתוכנן */
+          const a=actualFor(def.name,season,w.wave);
+          if(!a.meters) return '<div class="calc" style="color:#9a3412">טרם שובץ בשטח</div>';
+          const diff=Math.round((a.meters-needM)*10)/10;
+          const bedTxt=a.beds===1?'בערוגה אחת':('ב-'+a.beds+' ערוגות');
+          let t='<div class="calc"><b>בפועל '+a.meters+'מ׳</b> '+bedTxt;
+          if(needM && Math.abs(diff)>0.5){
+            t+=' <span style="color:'+(diff>0?'#b45309':'#6b7280')+';font-weight:700">('
+              +(diff>0?'+':'')+diff+'מ׳)</span>';
+          }
+          return t+'</div>';
+        })()+
         (isAlternating(def.name)?'<div class="alt">⚠ שלוחה כן, שלוחה לא — לסירוגין</div>':'');
 
         const notes=[def.notes,sp.notes].filter(Boolean).join(' · ');
@@ -534,6 +592,21 @@ function build(){
       }
       html+='</div>';
     });
+
+    /* גידולים שנמצאים בשטח בלי שורת הזמנה — בלי זה הם פשוט נעלמים מהדף */
+    const extra=unplannedCrops(season,defs);
+    if(extra.length){
+      html+='<div class="week"><div class="week-bar" style="background:#b45309">'+
+        '<span class="w">בשטח ולא בתכנון</span>'+
+        '<span class="d">'+extra.length+' גידולים</span></div>'+
+        '<table><thead><tr><th>ירק</th><th class="c" style="width:90px">מטרי שלוחה</th>'+
+        '<th>מיקום</th></tr></thead><tbody>'+
+        extra.map(x=>'<tr><td><div class="crop">'+esc(x.crop)+'</div></td>'+
+          '<td class="c">'+(x.meters||'—')+'</td>'+
+          '<td>'+esc(x.spots.join(' · '))+'</td></tr>').join('')+
+        '</tbody></table></div>';
+    }
+
     html+=pageFoot()+'</div>';
   }
 
