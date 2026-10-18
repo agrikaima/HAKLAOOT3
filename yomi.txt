@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#2d6a4f">
+<title>דף עבודה יומי — שלושה ברושים ירוקים</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@500;700;900&family=Heebo:wght@400;500;700;900&display=swap');
+
+  *{box-sizing:border-box;margin:0;padding:0}
+
+  :root{
+    --ink:#16261c;
+    --green:#2d6a4f;
+    --deep:#1b4332;
+    --rule:#d5ded6;
+    --paper:#fbfaf6;
+    --muted:#5d6b60;
+  }
+
+  body{font-family:'Heebo',Arial,sans-serif;background:#e9ebe6;color:var(--ink);
+       line-height:1.6;padding:0 0 60px}
+  .wrap{max-width:1000px;margin:0 auto;padding:0 14px}
+
+  header{background:linear-gradient(160deg,var(--deep),#40916c);color:#fff;
+         padding:26px 0 22px;margin-bottom:18px}
+  header .wrap{text-align:center}
+  header h1{font-family:'Frank Ruhl Libre',Georgia,serif;font-size:1.7rem;font-weight:900}
+  header p{font-size:.9rem;opacity:.92;margin-top:3px}
+
+  section{background:var(--paper);border-radius:10px;padding:18px 20px;
+          margin-bottom:14px;box-shadow:0 1px 8px rgba(0,0,0,.06)}
+  section h2{font-family:'Frank Ruhl Libre',serif;font-size:1.15rem;font-weight:700;
+             color:var(--deep);padding-bottom:8px;margin-bottom:13px;
+             border-bottom:2px solid var(--rule)}
+
+  .fields{display:flex;flex-wrap:wrap;gap:13px;align-items:flex-end}
+  .ctl{display:flex;flex-direction:column;gap:4px;flex:1;min-width:150px}
+  .ctl label{font-size:.75rem;font-weight:700;color:var(--muted)}
+  .ctl select,.ctl input{font-family:inherit;font-size:.95rem;padding:9px 10px;
+    border:1px solid var(--rule);border-radius:5px;background:#fff;color:var(--ink)}
+  select:focus-visible,input:focus-visible{outline:2.5px solid #b0521e;outline-offset:2px}
+
+  .btn{font-family:inherit;font-size:.95rem;font-weight:700;color:#fff;
+    background:var(--green);border:0;border-radius:8px;padding:11px 22px;cursor:pointer}
+  .btn:active{background:var(--deep)}
+  .btn.ghost{background:#fff;color:var(--green);border:1.5px solid var(--green)}
+
+  /* ── הדף עצמו ── */
+  .sheet{background:#fff;border-radius:10px;padding:16px 18px;
+         box-shadow:0 1px 8px rgba(0,0,0,.08)}
+
+  .sheet-head{display:flex;justify-content:space-between;align-items:flex-end;
+              gap:12px;flex-wrap:wrap;border-bottom:2.5px solid var(--deep);
+              padding-bottom:8px;margin-bottom:12px}
+  .sheet-head .title{font-family:'Frank Ruhl Libre',serif;font-size:1.45rem;
+                     font-weight:900;color:var(--deep);line-height:1.2}
+  .sheet-head .sub{font-size:.8rem;color:var(--muted);margin-top:2px}
+  .sheet-head .daybox{text-align:left;font-size:.88rem;line-height:1.5}
+  .sheet-head .daybox b{font-size:1.15rem;color:var(--deep)}
+
+  table{width:100%;border-collapse:collapse;font-size:.78rem}
+  th{background:#e8f3ec;border:1px solid #9bb8a7;padding:6px 5px;
+     font-weight:700;color:var(--deep);text-align:center;font-size:.76rem}
+  td{border:1px solid #b9c9bf;padding:0;height:34px;vertical-align:middle}
+  td.c{text-align:center}
+  td .v{padding:3px 5px;font-weight:600}
+  td .v.dim{font-weight:400;color:#4b5563}
+  tr.planned{background:#f6fbf7}
+  tr.blank td{height:36px}
+  .tick{display:inline-block;width:13px;height:13px;border:1.4px solid #6b7280;
+        border-radius:3px;vertical-align:-2px}
+
+  .sign{display:flex;gap:26px;margin-top:14px;flex-wrap:wrap}
+  .sign div{flex:1;min-width:190px;font-size:.78rem;color:var(--muted)}
+  .sign .line{border-bottom:1px solid #9ca3af;height:26px;margin-top:3px}
+
+  .ref{margin-top:13px;border-top:1.5px dashed var(--rule);padding-top:10px}
+  .ref h3{font-size:.8rem;font-weight:700;color:var(--deep);margin-bottom:5px}
+  .ref p{font-size:.72rem;color:#4b5563;line-height:1.75}
+  .ref .chip{display:inline-block;background:#eef5f0;border:1px solid #cfe0d6;
+             border-radius:11px;padding:1px 8px;margin:1px 1px;font-size:.7rem}
+
+  .note{font-size:.76rem;color:var(--muted);margin-top:10px;line-height:1.6}
+
+  @media print{
+    @page{size:A4 portrait;margin:11mm 10mm}
+    body{background:#fff;padding:0}
+    header,.noprint{display:none!important}
+    .wrap{max-width:none;padding:0}
+    .sheet{box-shadow:none;border-radius:0;padding:0}
+    table{font-size:9pt}
+    th{background:#e8f3ec!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    tr.planned{background:#f6fbf7!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    td{height:9.5mm}
+    tr{break-inside:avoid}
+    .ref .chip{background:#eef5f0!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  }
+
+  @media (max-width:640px){
+    .ctl{min-width:100%}
+    table{font-size:.72rem}
+  }
+</style>
+</head>
+<body>
+
+<header class="noprint">
+  <div class="wrap">
+    <h1>📋 דף עבודה יומי</h1>
+    <p>שלושה ברושים ירוקים</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+<section class="noprint">
+  <h2>הכנת הדף</h2>
+  <div class="fields">
+    <div class="ctl">
+      <label for="d-date">תאריך</label>
+      <input type="date" id="d-date" onchange="build()">
+    </div>
+    <div class="ctl">
+      <label for="d-rows">שורות ריקות להוספה</label>
+      <input type="number" id="d-rows" value="14" min="0" max="25" onchange="build()">
+    </div>
+    <div class="ctl" style="flex:0 0 auto">
+      <button class="btn" onclick="window.print()">🖨️ הדפס</button>
+    </div>
+    <div class="ctl" style="flex:0 0 auto">
+      <button class="btn ghost" onclick="location.href='index.html'">← לאפליקציה</button>
+    </div>
+  </div>
+  <div class="note" id="d-status"></div>
+</section>
+
+<div class="sheet" id="sheet"></div>
+
+<div class="note noprint" style="text-align:center;padding:0 10px">
+  העמודות זהות לשדות בלשונית <b>שיגרת שדה</b> באפליקציה — מה שנרשם כאן מוקלד שם בלי תרגום.
+</div>
+
+</div>
+
+<script>
+/* ── השדות, זהים ל-FIELD_DEFS באפליקציה ── */
+var FIELDS = ['חול ימין','חול שמאל','אילנית ימין','אילנית שמאל','בז ימין','בז שמאל',
+              'קיפוד ימין','קיפוד שמאל','פתוח ימין','פתוח שמאל','ספירלה','גדר ליד מיכה'];
+
+/* ── סוגי עבודה, זהים ל-settings.opTypes באפליקציה ── */
+var OP_TYPES = ['חריש','דיסקוס','קילטור','יישור / תיחוח','דישון','זיבול',
+                'חיפוי / פריסת ניילון','הנחת טפטופים','עישוב','ניכוש','גיזום',
+                'ניקוי שטח','תיקון השקיה','סימון ערוגות','אחר'];
+
+var DAYS = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+
+function el(id){ return document.getElementById(id); }
+
+function lsGet(key, fallback){
+  try { var v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
+  catch(e){ return fallback; }
+}
+
+function heDate(d){
+  if (!d) return '';
+  var p = d.split('-');
+  return p[2] + '/' + p[1] + '/' + p[0];
+}
+
+function esc(s){
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* מושך מהאפליקציה את העבודות המתוכננות לתאריך הזה.
+   אותו זיכרון מקומי — שתי הדפים יושבים על אותה כתובת. */
+function plannedFor(date){
+  var ops = lsGet('fieldOps', []);
+  if (!Array.isArray(ops)) return [];
+  return ops.filter(function(o){
+    return o && o.date === date && (o.status || 'planned') !== 'done';
+  });
+}
+
+function cell(val, dim){
+  if (!val) return '<td></td>';
+  return '<td><div class="v' + (dim ? ' dim' : '') + '">' + esc(val) + '</div></td>';
+}
+
+function build(){
+  var date = el('d-date').value;
+  var extra = Math.max(0, Math.min(25, Number(el('d-rows').value) || 0));
+  var planned = date ? plannedFor(date) : [];
+
+  var dayName = '';
+  if (date) {
+    var dt = new Date(date + 'T00:00:00');
+    if (!isNaN(dt)) dayName = 'יום ' + DAYS[dt.getDay()];
+  }
+
+  el('d-status').innerHTML = date
+    ? (planned.length
+        ? '✓ נמצאו <b>' + planned.length + '</b> עבודות מתוכננות לתאריך הזה — הן מודפסות מוכנות, ונשאר רק למלא מי ביצע, כמה שעות ומה קרה.'
+        : 'אין עבודות מתוכננות לתאריך הזה באפליקציה. הדף יודפס ריק למילוי ידני מלא.')
+    : 'בחרי תאריך.';
+
+  var head =
+    '<div class="sheet-head">'
+      + '<div>'
+        + '<div class="title">דף עבודה יומי</div>'
+        + '<div class="sub">שלושה ברושים ירוקים · חוות קיימא</div>'
+      + '</div>'
+      + '<div class="daybox">'
+        + '<b>' + (heDate(date) || '____/____/______') + '</b>'
+        + (dayName ? '<div>' + dayName + '</div>' : '')
+      + '</div>'
+    + '</div>';
+
+  var rows = '';
+
+  planned.forEach(function(o){
+    rows += '<tr class="planned">'
+      + cell(o.type)
+      + cell(o.field || 'כל השדה')
+      + cell(o.beds)
+      + cell(o.by, true)
+      + cell(o.equipment, true)
+      + '<td></td>'
+      + '<td class="c"><span class="tick"></span></td>'
+      + cell(o.notes, true)
+      + '</tr>';
+  });
+
+  for (var i = 0; i < extra; i++){
+    rows += '<tr class="blank">'
+      + '<td></td><td></td><td></td><td></td><td></td><td></td>'
+      + '<td class="c"><span class="tick"></span></td><td></td>'
+      + '</tr>';
+  }
+
+  var table =
+    '<table>'
+      + '<thead><tr>'
+        + '<th style="width:15%">סוג עבודה</th>'
+        + '<th style="width:12%">חלקה</th>'
+        + '<th style="width:9%">ערוגות</th>'
+        + '<th style="width:13%">מי ביצע</th>'
+        + '<th style="width:12%">ציוד</th>'
+        + '<th style="width:7%">שעות</th>'
+        + '<th style="width:6%">בוצע</th>'
+        + '<th>הערות · תקלות · תוצאות</th>'
+      + '</tr></thead>'
+      + '<tbody>' + rows + '</tbody>'
+    + '</table>';
+
+  var sign =
+    '<div class="sign">'
+      + '<div>שם ממלא הדף<div class="line"></div></div>'
+      + '<div>נמסר ל<div class="line"></div></div>'
+      + '<div>הוקלד באפליקציה בתאריך<div class="line"></div></div>'
+    + '</div>';
+
+  var ref =
+    '<div class="ref">'
+      + '<h3>לכתוב בדיוק כך — אלה הערכים שבאפליקציה</h3>'
+      + '<p><b>סוג עבודה:</b> '
+        + OP_TYPES.map(function(t){ return '<span class="chip">' + esc(t) + '</span>'; }).join('')
+      + '</p>'
+      + '<p style="margin-top:4px"><b>חלקה:</b> '
+        + FIELDS.map(function(f){ return '<span class="chip">' + esc(f) + '</span>'; }).join('')
+      + '</p>'
+      + '<p style="margin-top:6px">'
+        + 'ערוגות — מספרים או טווח (4, 5-9, הכל) · שעות — אפשר חצאים (1.5) · '
+        + 'עבודה שלא הושלמה: להשאיר את הריבוע ריק ולכתוב בהערות מה נשאר.'
+      + '</p>'
+    + '</div>';
+
+  el('sheet').innerHTML = head + table + sign + ref;
+}
+
+el('d-date').value = new Date().toISOString().split('T')[0];
+build();
+</script>
+</body>
+</html>
