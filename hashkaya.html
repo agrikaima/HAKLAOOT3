@@ -202,9 +202,9 @@
       <div class="hint">ממוצע ארבעת הימים</div>
     </div>
     <div class="ctl">
-      <label for="bump">תוספת (%)</label>
-      <input type="number" id="bump" value="15" step="5" min="0" oninput="calc()">
-      <div class="hint">ה״קצת מעל״ שאת נותנת</div>
+      <label for="bump">תוספת / הפחתה (%)</label>
+      <input type="number" id="bump" value="15" step="5" min="-90" max="200" oninput="calc()">
+      <div class="hint">חיובי מוסיף · שלילי מפחית, למשל ‎-20 אחרי גשם</div>
     </div>
     <div class="ctl">
       <label for="firstStart">שעת פתיחה ראשונה</label>
@@ -265,7 +265,7 @@
     <thead>
       <tr>
         <th>ברז</th>
-        <th class="c" style="width:70px">תוספת<br>%</th>
+        <th class="c" style="width:74px">תוספת /<br>הפחתה %</th>
         <th class="c" style="width:62px">רטיבות<br>1–8</th>
         <th class="c" style="width:58px">השקיות<br>ביום</th>
         <th class="c" style="width:58px">כל כמה<br>ימים</th>
@@ -367,10 +367,18 @@ const state = {};
 DEFAULT_VALVES.forEach(v => state[v.id] = { wet:4, perDay:1, everyDays:1, start:'05:00', bump:null });
 
 /* התוספת בפועל של ברז: שלו אם הוגדרה, אחרת הכללית */
+/* התוספת יכולה להיות שלילית — להפחית השקיה אחרי גשם או בקור.
+   חסומה ב-90% הפחתה, כדי שהיעד לא יתאפס או יהפוך לשלילי. */
+function clampBump(n){
+  n = Number(n);
+  if (!isFinite(n)) return 0;
+  return Math.max(-90, Math.min(200, n));
+}
 function bumpOf(id){
   const b = state[id].bump;
-  return (b === null || b === undefined || b === '') ?
-    (Number(document.getElementById('bump').value) || 0) : Number(b);
+  return (b === null || b === undefined || b === '')
+    ? clampBump(Number(document.getElementById('bump').value) || 0)
+    : clampBump(b);
 }
 function targetOf(id){
   const evap = Number(document.getElementById('evap').value) || 0;
@@ -382,7 +390,7 @@ function chainTimes(){
   const first = document.getElementById('firstStart').value || '05:00';
   const gap = Number(document.getElementById('stagger').value) || 0;
   const evap = Number(document.getElementById('evap').value) || 0;
-  const bump = Number(document.getElementById('bump').value) || 0;
+  const bump = clampBump(Number(document.getElementById('bump').value) || 0);
   const targetMM = evap * (1 + bump/100);
 
   const [h, m] = first.split(':').map(Number);
@@ -444,7 +452,7 @@ function set(id, key, val){
 
 function calc(){
   const evap = Number(document.getElementById('evap').value) || 0;
-  const bump = Number(document.getElementById('bump').value) || 0;
+  const bump = clampBump(Number(document.getElementById('bump').value) || 0);
   const targetMM = evap * (1 + bump/100);
   const gapHours = Number(document.getElementById('gapHours').value) || 8;
 
@@ -472,10 +480,11 @@ function calc(){
         '<small>ברז ' + v.id + ' · ' + area.toFixed(2) + ' דונם · ' +
         f.toLocaleString('he-IL') + ' ל״ש</small></div></td>' +
 
-      '<td class="c"><input class="cell-in" type="number" min="0" step="5" placeholder="' +
-        (Number(document.getElementById('bump').value)||0) + '" value="' +
+      '<td class="c"><input class="cell-in" type="number" min="-90" max="200" step="5" placeholder="' +
+        clampBump(Number(document.getElementById('bump').value)||0) + '" value="' +
         (s.bump === null || s.bump === undefined ? '' : s.bump) +
-        '" onchange="set(' + v.id + ',\'bump\',this.value)">' +
+        '" style="' + (bumpOf(v.id) < 0 ? 'color:#b45309;font-weight:700' : '') + '"' +
+        ' onchange="set(' + v.id + ',\'bump\',this.value)">' +
         '<div class="sub" style="margin-top:3px">' + vTarget.toFixed(1) + ' מ״מ</div></td>' +
 
       '<td class="c"><input class="wet-in" type="number" min="1" max="8" value="' + s.wet +
@@ -513,11 +522,18 @@ function calc(){
   document.getElementById('totalCube').innerHTML =
     '<div class="num">' + totalCube.toFixed(1) + ' קו״ב ליום</div>';
 
+  /* הניסוח משתנה לפי הסימן — "+15% תוספת" מול "20% הפחתה" */
+  var bumpTxt = bump === 0 ? 'בלי שינוי'
+              : (bump > 0 ? '+' + bump + '% תוספת'
+                          : Math.abs(bump) + '% הפחתה');
+
   document.getElementById('note').innerHTML =
-    'החישוב: התאדות ' + evap + ' מ״מ + ' + bump + '% תוספת = <strong>' + targetMM.toFixed(1) +
+    'החישוב: התאדות ' + evap + ' מ״מ · ' + bumpTxt + ' = <strong>' + targetMM.toFixed(1) +
     ' מ״מ ליום</strong>. הדקות מחושבות לפי הספיקה של כל ברז והשטח שהוא משקה. ' +
     'עמודת ״כל כמה ימים״ מרכזת את הכמות — השקיה כל 3 ימים נותנת פי 3 בכל פעם. ' +
-    'עמודת התוספת ריקה = משתמשת בתוספת הכללית. מספר בתוכה גובר עליה לאותו ברז. ' +
+    'עמודת התוספת ריקה = משתמשת בערך הכללי. מספר בתוכה גובר עליו לאותו ברז, ' +
+    'ואפשר גם מספר שלילי כדי להפחית בברז מסוים בלבד. ' +
+    'ההפחתה חסומה ב-90%, כדי שלא יתקבל יעד אפס. ' +
     'רטיבות 1–8 נרשמת לתיעוד ולהשוואה, ואינה משנה את החישוב.';
 }
 
@@ -529,7 +545,7 @@ function save(ev){
   if (!d) { alert('בחרי תאריך'); return; }
 
   const evap = Number(document.getElementById('evap').value) || 0;
-  const bump = Number(document.getElementById('bump').value) || 0;
+  const bump = clampBump(Number(document.getElementById('bump').value) || 0);
   const targetMM = evap * (1 + bump/100);
   
   const gapHours = Number(document.getElementById('gapHours').value) || 8;
@@ -593,7 +609,7 @@ function renderHistory(){
   if (!all.length) { box.innerHTML = ''; return; }
 
   box.innerHTML = '<strong>שבועות קודמים</strong><table>' +
-    '<tr><th>תאריך</th><th>התאדות</th><th>תוספת</th>' +
+    '<tr><th>תאריך</th><th>התאדות</th><th>תוספת/הפחתה</th>' +
     VALVES.map(v => '<th>' + v.name + '</th>').join('') + '</tr>' +
     all.map(function(r){
       return '<tr><td>' + fmtDate(r.date) + '</td>' +
