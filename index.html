@@ -251,7 +251,8 @@
   <button onclick="dismissRemote()" style="padding:4px 10px;border:1px solid #fff;border-radius:6px;background:transparent;color:#fff">אחר כך</button>
 </div>
 <header>
-  <h1>🌱 שלושה ברושים ירוקים-ראשי</h1>
+  <h1>🌱 <span id="hdrTitle">נבט</span></h1>
+  <p id="hdrMark" style="font-size:.78rem;font-weight:600;opacity:.72;letter-spacing:.5px"></p>
   <p id="syncStatus">מוכן לתיעוד</p>
 </header>
 
@@ -1222,7 +1223,7 @@
 <div id="view-rotation" class="view">
 
   <div class="card no-print" id="rot-controls">
-    <div class="section-label">🗺️ מתכנן רוטציה — 136 ערוגות</div>
+    <div class="section-label" id="rot-planner-title">🗺️ מתכנן רוטציה</div>
     <div class="fg g2">
       <div>
         <label>עונה לתכנון</label>
@@ -1244,9 +1245,9 @@
 
     <!-- אגדה / legend -->
     <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:.75rem;margin-bottom:6px">
-      <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#d1fae5;display:inline-block"></span>ירוקים (אילנית)</span>
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#d1fae5;display:inline-block"></span>ירוקים</span>
       <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#fee2e2;display:inline-block"></span>עונתיים</span>
-      <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#fef3c7;display:inline-block"></span>גמיש (חול)</span>
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#fef3c7;display:inline-block"></span>גמיש</span>
       <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#fef2f2;border:1.5px solid var(--red);display:inline-block"></span>אותו ירק!</span>
       <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:50%;background:#fffbeb;border:1.5px solid var(--amber);display:inline-block"></span>אותה משפחה</span>
     </div>
@@ -1330,6 +1331,18 @@
 </div>
 <!-- ══════════ SETTINGS ══════════ -->
 <div id="view-settings" class="view">
+  <div class="card">
+    <div class="section-label">🏡 החווה</div>
+    <div class="fg">
+      <label>שם החווה</label>
+      <input type="text" id="cfg-farm" placeholder="למשל: חוות קיימא נהלל"
+             oninput="saveFarmName(this.value)">
+      <div style="font-size:.74rem;color:var(--muted);margin-top:3px">
+        מופיע בראש האפליקציה ובדפים המודפסים
+      </div>
+    </div>
+  </div>
+
   <div class="card">
     <div class="section-label">🔗 חיבור ל-Google Sheets</div>
     <div class="fg">
@@ -1644,6 +1657,57 @@ const FIELD_DEFS = [
 const ZONE_COLORS = { 'ירוקים':'#d1fae5','עונתיים':'#fee2e2','חול':'#fef3c7','מיוחד':'#f3e8ff' };
 const ZONE_LABELS = { 'ירוקים':'🌿 ירוקים','עונתיים':'🍅 עונתיים','חול':'🏖️ גמיש','מיוחד':'🌀 מיוחד' };
 
+/* ══════ שם האפליקציה ושם החווה ══════
+   "נבט" הוא הכלי. שם החווה הוא של מי שמשתמש בו, ולכן הוא הגדרה
+   ולא טקסט בקוד — כך אותו קובץ משרת כל חווה. */
+const APP_NAME = 'נבט';
+
+function farmName() { return (settings.farmName || '').trim(); }
+
+function saveFarmName(v) {
+  settings.farmName = String(v || '').trim();
+  localStorage.setItem('settings', JSON.stringify(settings));
+  paintFarmName();
+}
+
+function paintFarmName() {
+  /* שם החווה הוא הכותרת הגדולה — מי שעובד כאן כל יום צריך לדעת
+     של מי הנתונים, לא באיזה כלי הוא משתמש. "נבט" הוא סימן המוצר
+     ויושב קטן מתחת. בלי שם חווה מוגדר, הכלי לבדו בכותרת. */
+  var hasFarm = !!farmName();
+  var ttl  = document.getElementById('hdrTitle');
+  var mark = document.getElementById('hdrMark');
+  if (ttl)  ttl.textContent = hasFarm ? farmName() : APP_NAME;
+  if (mark) {
+    mark.textContent = hasFarm ? APP_NAME : '';
+    mark.style.display = hasFarm ? 'block' : 'none';
+  }
+  var dt = hasFarm ? farmName() + ' · ' + APP_NAME : APP_NAME;
+  if (document.title !== dt) document.title = dt;
+}
+
+/* ══════ שכבת תרגום ══════
+   היום יש עברית בלבד. כל מחרוזת חדשה עוברת כאן, כדי שהוספת
+   אנגלית בעתיד תהיה מילון נוסף ולא סריקה של כל הקובץ. */
+const I18N = {
+  he: {
+    beds:        'ערוגות',
+    rotationPlanner: '🗺️ מתכנן רוטציה',
+    farm:        'החווה',
+    farmNameLbl: 'שם החווה'
+  }
+};
+function lang() { return settings.lang || 'he'; }
+function t(key) {
+  var d = I18N[lang()] || I18N.he;
+  return (key in d) ? d[key] : ((key in I18N.he) ? I18N.he[key] : key);
+}
+
+/* מספר הערוגות מחושב מהחלקות שהוגדרו, ולא מספר קבוע בקוד */
+function totalBeds() {
+  return FIELD_DEFS.reduce(function(s,f){ return s + (Number(f.beds) || 0); }, 0);
+}
+
 // משפחות בוטניות לזיהוי קונפליקט
 const CROP_FAMILY = {
   'עגבנייה':'סולניים','עגבניות':'סולניים','עגבנייה שרי':'סולניים',
@@ -1698,6 +1762,13 @@ let taskFilter = 'all';
 let procFilter = '';
 
 document.addEventListener('DOMContentLoaded', () => {
+  /* שם האפליקציה, שם החווה וספירת הערוגות האמיתית */
+  paintFarmName();
+  var _fIn = document.getElementById('cfg-farm');
+  if (_fIn) _fIn.value = farmName();
+  var _rt = document.getElementById('rot-planner-title');
+  if (_rt) _rt.textContent = t('rotationPlanner') + ' — ' + totalBeds() + ' ' + t('beds');
+
   document.getElementById('f-date').value = today();
   document.getElementById('t-reg-date').value = today();
   document.getElementById('p-date').value = today();
@@ -1853,6 +1924,9 @@ function renderFieldSelects() {
 
 function saveFieldDefs() {
   localStorage.setItem('fieldDefs', JSON.stringify(FIELD_DEFS));
+  /* הספירה בכותרת הרוטציה עוקבת אחרי החלקות שהוגדרו */
+  var _rt = document.getElementById('rot-planner-title');
+  if (_rt) _rt.textContent = t('rotationPlanner') + ' — ' + totalBeds() + ' ' + t('beds');
   showToast('✓ הגדרות שדות נשמרו');
 }
 
