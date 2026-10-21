@@ -1,7 +1,7 @@
 {
-  "name": "שלושה ברושים ירוקים",
-  "short_name": "ברושים",
-  "description": "ניהול שדה — שתילות, משימות, רכש ומלאי",
+  "name": "נבט",
+  "short_name": "נבט",
+  "description": "ניהול שדה — ערוגות, רוטציה, שתילות, קטיף ומלאי",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#1b4332",
