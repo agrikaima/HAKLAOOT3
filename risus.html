@@ -50,6 +50,12 @@
   #logBox .msg.ok{color:var(--green);font-weight:700}
   #logBox .msg.err{color:var(--danger);font-weight:700}
 
+  .mixwarn{background:#fffbeb;border:1px solid #fcd34d;border-right:4px solid var(--warn);
+    border-radius:7px;padding:11px 13px;margin-bottom:13px;font-size:.84rem;line-height:1.65;color:#78350f}
+  .mixwarn b{color:var(--warn)}
+  #mixBox{border:2px solid #2d6a4f}
+  #mixBox table td{vertical-align:middle}
+
   .fields{display:flex;flex-wrap:wrap;gap:13px}
   .ctl{display:flex;flex-direction:column;gap:4px;flex:1;min-width:132px}
   .ctl label{font-size:.75rem;font-weight:700;color:#5d6b60}
@@ -139,6 +145,16 @@
   </div>
   <div class="fields" style="margin-top:13px">
     <div class="ctl">
+      <label for="mat2">חומר שני באותו מיכל <span style="font-weight:400;color:#8a968c">(רשות)</span></label>
+      <select id="mat2" onchange="onMat2()"></select>
+    </div>
+    <div class="ctl" id="use2-wrap" style="display:none">
+      <label for="use2">גידול / מחלה — לחומר השני</label>
+      <select id="use2" onchange="calc()"></select>
+    </div>
+  </div>
+  <div class="fields" style="margin-top:13px">
+    <div class="ctl">
       <label for="field">חלקה</label>
       <select id="field" onchange="calc()"></select>
     </div>
@@ -154,6 +170,8 @@
 </section>
 
 <div class="result" id="result"></div>
+
+<section id="mixBox" style="display:none"></section>
 
 <section class="noprint" id="logBox">
   <h2>רישום הריסוס</h2>
@@ -214,7 +232,7 @@ const FIELDS=[
    dose: מינון לדונם · vol: נפח תרסיס לדונם · pct: ריכוז באחוזים (חלופה למינון) */
 const MATS=[
 {
-  id:'probit',
+  id:'probit', order:3,
   name:'פרוביט',
   sub:'קוטל מזיקים ביולוגי · Bacillus thuringiensis',
   unit:'גרם',
@@ -242,7 +260,7 @@ const MATS=[
   good:'עמיד בחום ו-UV · בטוח לדבורים · מאושר לאורגני · ניתן לשימוש סמוך לקטיף'
 },
 {
-  id:'helio',
+  id:'helio',  order:2,
   name:'הליוגופרית',
   sub:'תרחיף גופרית מינרלית · 700 גר׳/ליטר',
   unit:'סמ״ק',
@@ -270,7 +288,7 @@ const MATS=[
   good:'התכשיר אינו פוגע בצרעות אנגירוס ופשפשי אוריוס · מאושר לאורגני'
 },
 {
-  id:'kocide',
+  id:'kocide', order:1,
   name:'קוציד 2000',
   sub:'קוטל פטריות וחיידקים · נחושת 53.8%',
   unit:'גרם',
@@ -320,6 +338,19 @@ el('field').innerHTML = FIELDS.map(function(f){
   return '<option value="'+f.name+'">'+f.name+' ('+f.len+'מ׳)</option>';
 }).join('');
 el('field').value = 'פתוח שמאל';
+
+el('mat2').innerHTML = '<option value="">— ללא —</option>' +
+  MATS.map(function(m,i){ return '<option value="'+i+'">'+m.name+'</option>'; }).join('');
+
+function onMat2(){
+  var v = el('mat2').value;
+  var wrap = el('use2-wrap');
+  if (v === '') { wrap.style.display = 'none'; calc(); return; }
+  var m = MATS[+v];
+  el('use2').innerHTML = m.uses.map(function(u,i){ return '<option value="'+i+'">'+u.label+'</option>'; }).join('');
+  wrap.style.display = 'flex';
+  calc();
+}
 
 function onMat(){
   const m = MATS[+el('mat').value];
@@ -396,7 +427,123 @@ function calc(){
       : '') +
     '<div class="tank" style="font-size:.8rem;opacity:.8">🧮 ' + basis + '</div>';
 
+  renderMix(m, u, f, beds, tankL, dunam);
   renderCard(m, u);
+}
+
+/* ══════ מיכל משולב ══════
+   שני תכשירים באותו מיכל. כל אחד מחושב לפי המינון שלו על אותו
+   שטח, אבל נפח המים חייב להיות מספר אחד — ולכן נלקחת החפיפה בין
+   שני הטווחים. ההמתנה לקטיף היא הארוכה מבין השניים. */
+function renderMix(m1, u1, f, beds, tankL, dunam){
+  var box = el('mixBox');
+  var sel = el('mat2').value;
+  if (sel === '') { box.innerHTML = ''; box.style.display = 'none'; return; }
+
+  var m2 = MATS[+sel];
+  var u2 = m2.uses[+el('use2').value] || m2.uses[0];
+  box.style.display = 'block';
+
+  /* נפח התרסיס המשותף — החפיפה בין הטווחים */
+  var v1 = u1.vol ? num(u1.vol) : null;
+  var v2 = u2.vol ? num(u2.vol) : null;
+  var lo = null, hi = null, noOverlap = false;
+  if (v1 && v2) {
+    lo = Math.max(v1[0], v2[0]);
+    hi = Math.min(v1[1], v2[1]);
+    if (lo > hi) { noOverlap = true; lo = Math.max(v1[0], v2[0]); hi = lo; }
+  } else if (v1) { lo = v1[0]; hi = v1[1]; }
+  else if (v2)  { lo = v2[0]; hi = v2[1]; }
+
+  var waterLo = lo !== null ? lo * dunam : null;
+  var waterHi = hi !== null ? hi * dunam : null;
+
+  /* כמה מכל חומר במיכל אחד */
+  function perTank(mm, uu){
+    if (uu.dose && lo !== null) {
+      var d = num(uu.dose);
+      return [ (d[0] / hi) * tankL, (d[1] / lo) * tankL ];
+    }
+    if (uu.pct) {
+      var p = num(uu.pct);
+      return [ tankL * 1000 * (p[0]/100), tankL * 1000 * (p[1]/100) ];
+    }
+    return null;
+  }
+  function totalMat(uu){
+    if (uu.dose) { var d = num(uu.dose); return [d[0]*dunam, d[1]*dunam]; }
+    if (uu.pct && waterLo !== null) {
+      var p = num(uu.pct);
+      return [ waterLo*1000*(p[0]/100), waterHi*1000*(p[1]/100) ];
+    }
+    return null;
+  }
+
+  var pt1 = perTank(m1,u1), pt2 = perTank(m2,u2);
+  var tt1 = totalMat(u1),   tt2 = totalMat(u2);
+  var tanks = waterHi ? Math.ceil(waterHi / tankL) : null;
+
+  /* סדר הכנסה — מהתווית */
+  var ordered = [{m:m1,u:u1,pt:pt1,tt:tt1},{m:m2,u:u2,pt:pt2,tt:tt2}]
+    .sort(function(a,b){ return (a.m.order||9) - (b.m.order||9); });
+
+  var phi = Math.max(m1.phi||0, m2.phi||0);
+  var phiFrom = (m1.phi >= m2.phi) ? m1.name : m2.name;
+
+  var warns = [];
+  (m1.warn||[]).forEach(function(w){ warns.push([m1.name,w]); });
+  (m2.warn||[]).forEach(function(w){ warns.push([m2.name,w]); });
+
+  box.innerHTML =
+    '<h2>🪣 מיכל משולב — ' + m1.name + ' + ' + m2.name + '</h2>' +
+
+    '<div class="mixwarn">' +
+      '<b>לאמת לפני ערבוב ראשון.</b> התוויות שבכלי לא אוסרות את הצירוף הזה, אבל גם ' +
+      'לא מאשרות אותו. לבדוק מול היצרן או המדריך, ולעשות בדיקת צנצנת: לערבב כמות ' +
+      'קטנה ביחס הנכון, להמתין 15 דקות, ולראות שלא נוצרו גושים, שכבות או שקיעה.' +
+    '</div>' +
+
+    (noOverlap
+      ? '<div class="mixwarn" style="background:#fef2f2;border-color:#b91c1c;color:#7f1d1d">' +
+        '<b>אין חפיפה בין נפחי התרסיס.</b> ' + m1.name + ' מבקש ' +
+        num(u1.vol)[0] + '–' + num(u1.vol)[1] + ' ל׳/ד׳ ו-' + m2.name + ' מבקש ' +
+        num(u2.vol)[0] + '–' + num(u2.vol)[1] + '. החישוב שלהלן לפי ' + lo +
+        ' ל׳/ד׳ — הערך המדולל מבין השניים. כדאי לשקול לרסס בנפרד.</div>'
+      : '') +
+
+    '<div class="big">' +
+      (waterHi !== null
+        ? '<div class="box"><div class="n">' + fmt(waterHi) + '</div><div class="u">ליטר מים</div>' +
+          (Math.abs(waterHi-waterLo) > 0.05 ? '<div class="sub">' + fmt(waterLo) + '–' + fmt(waterHi) + '</div>' : '') +
+          '</div>'
+        : '') +
+      '<div class="box"><div class="n" style="color:' + (phi >= 7 ? '#b91c1c' : '#2d6a4f') + '">' +
+        phi + '</div><div class="u">ימי המתנה לקטיף</div>' +
+        '<div class="sub">הארוך מבין השניים — ' + phiFrom + '</div></div>' +
+    '</div>' +
+
+    '<table style="margin-top:4px"><thead><tr>' +
+      '<th style="width:34px">סדר</th><th>תכשיר</th>' +
+      '<th>למיכל ' + tankL + ' ל׳</th><th>לכל השטח</th>' +
+    '</tr></thead><tbody>' +
+    ordered.map(function(x,i){
+      return '<tr><td class="c" style="text-align:center;font-weight:700">' + (i+1) + '</td>' +
+        '<td><b>' + x.m.name + '</b><div style="font-size:.72rem;color:#5d6b60">' +
+          x.u.label + '</div></td>' +
+        '<td style="font-weight:700">' + (x.pt ? range(x.pt[0], x.pt[1], x.m.unit) : '—') + '</td>' +
+        '<td>' + (x.tt ? range(x.tt[0], x.tt[1], x.m.unit) : '—') + '</td></tr>';
+    }).join('') +
+    '</tbody></table>' +
+
+    '<div class="tank" style="margin-top:10px">🪣 ' +
+      (tanks ? tanks + ' מילויים לכל השטח · ' : '') +
+      'להכניס לפי הסדר שבטבלה, ולערבב בין תכשיר לתכשיר</div>' +
+
+    '<div class="note"><b>אזהרות משני התכשירים</b><ul>' +
+      warns.map(function(w){
+        return '<li><b>' + w[0] + ':</b> ' + w[1] + '</li>';
+      }).join('') +
+    '</ul></div>';
 }
 
 function renderCard(m, u){
@@ -481,7 +628,21 @@ function logSpray(){
   if (u.dose) { var d = num(u.dose); doseTxt = range(d[0]*dunam, d[1]*dunam, m.unit); }
   else { var p = num(u.pct); doseTxt = (p[0] === p[1] ? p[0] + '%' : p[0] + '–' + p[1] + '%') + ' מנפח המים'; }
 
+  /* מיכל משולב — שני החומרים נרשמים יחד, וההמתנה היא הארוכה */
+  var sel2 = el('mat2').value;
+  var m2 = null, u2 = null, dose2 = '';
+  var phiUse = m.phi;
+  if (sel2 !== '') {
+    m2 = MATS[+sel2];
+    u2 = m2.uses[+el('use2').value] || m2.uses[0];
+    phiUse = Math.max(m.phi || 0, m2.phi || 0);
+    if (u2.dose) { var d2 = num(u2.dose); dose2 = range(d2[0]*dunam, d2[1]*dunam, m2.unit); }
+    else { var p2 = num(u2.pct); dose2 = (p2[0] === p2[1] ? p2[0] + '%' : p2[0] + '–' + p2[1] + '%'); }
+  }
+
   var extra = [beds + ' ערוגות · ' + fmt(dunam) + ' דונם', 'מרסס ' + tankL + ' ל׳'];
+  if (m2) extra.push('מיכל משולב · ' + m2.name + ' ' + dose2 +
+                     ' · המתנה לפי ' + (m.phi >= m2.phi ? m.name : m2.name));
   if (el('lg-notes').value.trim()) extra.push(el('lg-notes').value.trim());
 
   var rec = {
@@ -495,13 +656,13 @@ function logSpray(){
     clearVariety:'', harvestWeight:'', lastHarvest:'',
     seedVariety:'', seedQty:'', seedUnit:'', seedDepth:'',
     seedRows:'', seedDist:'', seedMethod:'',
-    sprayMaterial: m.name,
-    sprayTarget:   u.label,
-    sprayDose:     doseTxt,
+    sprayMaterial: m2 ? (m.name + ' + ' + m2.name) : m.name,
+    sprayTarget:   m2 ? (u.label + ' · ' + u2.label) : u.label,
+    sprayDose:     m2 ? (doseTxt + ' + ' + dose2) : doseTxt,
     sprayVolume:   waterHi !== null ? fmt(waterHi) : '',
-    sprayPHI:      m.phi,
+    sprayPHI:      phiUse,
     sprayBy:       el('lg-by').value.trim(),
-    sprayUntil:    phiDate(date, m.phi),
+    sprayUntil:    phiDate(date, phiUse),
     notes: extra.join(' · '),
     log: [], synced: false,
     createdAt: new Date().toISOString(),
@@ -519,7 +680,7 @@ function logSpray(){
   setTimeout(function(){ btn.disabled = false; }, 1500);
 
   msg.className = 'msg ok';
-  msg.textContent = '✓ נרשם: ' + m.name + ' · ' + f.name +
+  msg.textContent = '✓ נרשם: ' + (m2 ? m.name + ' + ' + m2.name : m.name) + ' · ' + f.name +
     (rec.bed ? ' · ערוגות ' + rec.bed : '') +
     ' · אין לקטוף עד ' + heDate(rec.sprayUntil) +
     '. פתחי את האפליקציה כדי שייכנס ויסתנכרן לגיליון.';
