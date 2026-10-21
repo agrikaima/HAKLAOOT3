@@ -198,6 +198,31 @@
     .bed-note-text{font-size:.6rem;color:#4c1d95;font-style:italic;line-height:1.3;cursor:text;background:#fef08a;padding:1px 5px;border-radius:3px;display:inline-block}
     .bed-note-edit-btn{font-size:.55rem;color:#a78bfa;cursor:pointer;text-align:left;margin-top:1px;user-select:none}
     .print-only{display:none}
+    /* ── מסך פתיחה ── */
+    #welcome{position:fixed;inset:0;z-index:4000;background:linear-gradient(160deg,#1b4332,#40916c);
+      display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto}
+    .wel-box{background:#fff;border-radius:16px;padding:30px 24px;max-width:420px;width:100%;
+      box-shadow:0 12px 40px rgba(0,0,0,.3);text-align:center}
+    .wel-logo{font-size:2.6rem;line-height:1}
+    .wel-title{font-size:1.7rem;font-weight:900;color:#1b4332;margin-top:4px}
+    .wel-sub{font-size:.86rem;color:#5d6b60;margin:4px 0 22px;line-height:1.5}
+    .wel-btn{display:block;width:100%;font-family:inherit;text-align:right;cursor:pointer;
+      background:#fff;border:1.5px solid #cfe0d6;border-radius:10px;padding:13px 15px;
+      margin-bottom:10px;color:#16261c}
+    .wel-btn b{display:block;font-size:1rem;font-weight:700}
+    .wel-btn span{display:block;font-size:.78rem;color:#6b7280;margin-top:2px}
+    .wel-btn.primary{background:#2d6a4f;border-color:#2d6a4f;color:#fff;text-align:center}
+    .wel-btn.primary b{font-size:1rem}
+    .wel-btn.primary span{color:#d8f3e3}
+    .wel-btn:active{transform:scale(.99)}
+    .wel-lbl{display:block;text-align:right;font-size:.82rem;font-weight:700;
+      color:#5d6b60;margin-bottom:5px}
+    #welcome input{width:100%;font-family:inherit;font-size:.95rem;padding:11px 12px;
+      border:1.5px solid #cfe0d6;border-radius:9px;margin-bottom:12px;box-sizing:border-box}
+    .wel-hint{font-size:.76rem;color:#6b7280;text-align:right;line-height:1.6;margin:-4px 0 12px}
+    .wel-back{background:none;border:0;color:#2d6a4f;font-family:inherit;font-size:.82rem;
+      cursor:pointer;padding:8px;width:100%}
+    .wel-foot{font-size:.74rem;color:#9ca3af;margin-top:14px}
     @media print{
       @page{size:A4 landscape;margin:10mm 8mm}
       nav,.tab-bar,button,.btn-ghost,.paint-bar,#rot-needs-panel,.bed-note-edit-btn,
@@ -250,6 +275,43 @@
   <button onclick="pullFromSheets()" style="margin:0 8px;padding:4px 10px;border:0;border-radius:6px;background:#fff;color:#1b4332;font-weight:bold">משוך עכשיו</button>
   <button onclick="dismissRemote()" style="padding:4px 10px;border:1px solid #fff;border-radius:6px;background:transparent;color:#fff">אחר כך</button>
 </div>
+<!-- ══════════ מסך פתיחה ══════════ -->
+<div id="welcome" style="display:none">
+  <div class="wel-box">
+    <div class="wel-logo">🌱</div>
+    <h2 class="wel-title">נבט</h2>
+    <p class="wel-sub">ניהול שדה — ערוגות, רוטציה, שתילות וקטיף</p>
+
+    <div id="wel-pick">
+      <button class="wel-btn primary" onclick="welStep('new')">
+        <b>חווה חדשה</b><span>מתחילים מאפס, כאן</span>
+      </button>
+      <button class="wel-btn" onclick="welStep('join')">
+        <b>הצטרפות לחווה קיימת</b><span>יש לי כבר גיליון או קישור</span>
+      </button>
+    </div>
+
+    <div id="wel-new" style="display:none">
+      <label class="wel-lbl">איך קוראים לחווה?</label>
+      <input type="text" id="wel-farm" placeholder="למשל: חוות קיימא נהלל"
+             onkeydown="if(event.key==='Enter')welFinishNew()">
+      <button class="wel-btn primary" onclick="welFinishNew()"><b>המשך</b></button>
+      <button class="wel-back" onclick="welStep('pick')">← חזרה</button>
+    </div>
+
+    <div id="wel-join" style="display:none">
+      <label class="wel-lbl">כתובת הסקריפט של הגיליון</label>
+      <input type="text" id="wel-url" dir="ltr"
+             placeholder="https://script.google.com/macros/s/.../exec">
+      <p class="wel-hint">מי שכבר עובד בחווה יכול לשלוח לך קישור הזמנה — ואז אין מה להקליד כאן.</p>
+      <button class="wel-btn primary" onclick="welFinishJoin()"><b>התחבר</b></button>
+      <button class="wel-back" onclick="welStep('pick')">← חזרה</button>
+    </div>
+
+    <div class="wel-foot">אפשר לשנות הכל אחר כך בהגדרות</div>
+  </div>
+</div>
+
 <header>
   <h1>🌱 <span id="hdrTitle">נבט</span></h1>
   <p id="hdrMark" style="font-size:.78rem;font-weight:600;opacity:.72;letter-spacing:.5px"></p>
@@ -1354,6 +1416,12 @@
       <input type="url" id="cfg-sheet-url" placeholder="https://docs.google.com/spreadsheets/d/..." dir="ltr">
     </div>
     <div class="sync-row"><div class="sdot" id="connDot"></div><span id="connText">לא מוגדר</span></div>
+    <div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border)">
+      <div style="font-size:.78rem;color:var(--muted);margin-bottom:6px;line-height:1.5">
+        כדי לצרף עובד לחווה הזו — לשלוח לו קישור הזמנה. הוא נכנס ומחובר, בלי להקליד כלום.
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="copyInvite()">🔗 העתק קישור הזמנה</button>
+    </div>
     <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
       <button class="btn btn-outline btn-sm" onclick="testConn()">בדוק חיבור</button>
       <button class="btn btn-outline btn-sm" onclick="pullFromSheets()">⬇️ משוך מהגיליון</button>
@@ -1629,8 +1697,118 @@ let settings       = JSON.parse(localStorage.getItem('settings')       || '{}');
 let activeFilter   = '';
 if (!settings.fields)   settings.fields   = [];
 if (!settings.procCats) settings.procCats = ['השקייה','גרעיני חמניה','כללי'];
-if (!settings.scriptUrl) {
-settings.scriptUrl = 'https://script.google.com/macros/s/AKfycbwK_LF4ijmwHcwbbcoMEBcn00fNp7KhE4rlo5H1nUjXUfGn0SFRojaIGb4z7axMy-Gq4A/exec';  localStorage.setItem('settings', JSON.stringify(settings));
+/* ══════ קישור הזמנה ══════
+   אין יותר כתובת גיליון מוטמעת בקוד — אותו קובץ משרת כל חווה,
+   ומי שפותח אותו לא נוחת בנתונים של מישהו אחר.
+   במקומה: קישור שמכיל את הכתובת, לצירוף הצוות בלחיצה אחת.
+     ?join=<מזהה הפריסה>   או   ?join=<כתובת מלאה>
+     &farm=<שם החווה>      (רשות) */
+const SCRIPT_BASE = 'https://script.google.com/macros/s/';
+
+function _joinToUrl(v) {
+  v = String(v || '').trim();
+  if (!v) return '';
+  if (/^https?:\/\//i.test(v)) return v;
+  return SCRIPT_BASE + v + '/exec';
+}
+
+function applyJoinLink() {
+  var q;
+  try { q = new URLSearchParams(location.search); } catch(e) { return false; }
+  var join = q.get('join');
+  var farm = q.get('farm');
+  var did  = false;
+
+  if (join) {
+    settings.scriptUrl = _joinToUrl(join);
+    did = true;
+  }
+  if (farm && !settings.farmName) {
+    settings.farmName = farm.trim();
+    did = true;
+  }
+  if (did) {
+    localStorage.setItem('settings', JSON.stringify(settings));
+    /* ניקוי הכתובת, כדי שהקישור לא יישאר בהיסטוריה ובשיתופים */
+    try { history.replaceState({}, '', location.pathname); } catch(e) {}
+  }
+  return did;
+}
+
+/* בניית קישור ההזמנה לצוות */
+function inviteLink() {
+  var id = settings.scriptUrl || '';
+  var m = id.match(/\/macros\/s\/([^\/]+)\/exec/);
+  if (m) id = m[1];
+  var u = location.origin + location.pathname + '?join=' + encodeURIComponent(id);
+  if (farmName()) u += '&farm=' + encodeURIComponent(farmName());
+  return u;
+}
+
+/* ══════ מסך הפתיחה ══════
+   מוצג רק למי שאין לו לא חיבור ולא נתונים — כלומר התקנה חדשה
+   לגמרי. מי שכבר עובד לא רואה אותו אף פעם. */
+function needsWelcome() {
+  /* שני סימנים בלבד, ושניהם מפורשים: חיבור לגיליון ושם חווה.
+     ספירת נתונים לא אמינה כאן — חלק מהם נוצרים באתחול. */
+  return !settings.scriptUrl && !farmName();
+}
+
+function welStep(which) {
+  ['pick','new','join'].forEach(function(k){
+    var el = document.getElementById('wel-' + k);
+    if (el) el.style.display = (k === which) ? 'block' : 'none';
+  });
+  var f = document.getElementById(which === 'new' ? 'wel-farm' : 'wel-url');
+  if (f) setTimeout(function(){ f.focus(); }, 60);
+}
+
+function showWelcome() {
+  var w = document.getElementById('welcome');
+  if (!w) return;
+  w.style.display = 'flex';
+  welStep('pick');
+}
+
+function closeWelcome() {
+  var w = document.getElementById('welcome');
+  if (w) w.style.display = 'none';
+  paintFarmName();
+  var fIn = document.getElementById('cfg-farm');
+  if (fIn) fIn.value = farmName();
+}
+
+function welFinishNew() {
+  var v = (document.getElementById('wel-farm').value || '').trim();
+  if (!v) { document.getElementById('wel-farm').focus(); return; }
+  saveFarmName(v);
+  closeWelcome();
+  switchTab('settings');
+  showToast('ברוכה הבאה! השלב הבא — חיבור לגיליון, בהגדרות');
+}
+
+function welFinishJoin() {
+  var v = (document.getElementById('wel-url').value || '').trim();
+  if (!v) { document.getElementById('wel-url').focus(); return; }
+  settings.scriptUrl = _joinToUrl(v);
+  localStorage.setItem('settings', JSON.stringify(settings));
+  closeWelcome();
+  var u = document.getElementById('cfg-url');
+  if (u) u.value = settings.scriptUrl;
+  if (typeof updateConnStatus === 'function') updateConnStatus();
+  showToast('מתחבר לגיליון...');
+  if (typeof pullFromSheets === 'function') pullFromSheets();
+}
+
+function copyInvite() {
+  if (!settings.scriptUrl) { showToast('אין עדיין חיבור לגיליון','err'); return; }
+  var u = inviteLink();
+  var done = function(){ showToast('✓ קישור ההזמנה הועתק'); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(u).then(done, function(){ prompt('העתיקי את הקישור:', u); });
+  } else {
+    prompt('העתיקי את הקישור:', u);
+  }
 }
 
 // ── הגדרות חלקות קבועות ─────────────────────────
@@ -1756,12 +1934,18 @@ function initRotationHistory() {
   set('גדר ליד מיכה_1','עגבניות שרי');
   saveRotationPlan();
 }
-initRotationHistory();
+/* ההיסטוריה שמוזרעת כאן שייכת לחלקות ספציפיות, ולכן היא נטענת רק
+   בהתקנה שכבר מוגדרת. חווה חדשה לא מקבלת נתונים של חווה אחרת. */
+if (settings.scriptUrl || (settings.farmName || '').trim()) initRotationHistory();
 
 let taskFilter = 'all';
 let procFilter = '';
 
 document.addEventListener('DOMContentLoaded', () => {
+  /* קישור הזמנה קודם — הוא עשוי להגדיר חיבור ושם חווה */
+  applyJoinLink();
+  if (needsWelcome()) showWelcome();
+
   /* שם האפליקציה, שם החווה וספירת הערוגות האמיתית */
   paintFarmName();
   var _fIn = document.getElementById('cfg-farm');
