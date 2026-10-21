@@ -2118,8 +2118,14 @@ function recCard(p) {
   }
 
   const cls = (REC_TYPES[type] && REC_TYPES[type].cls) || '';
-  const seasonLabel = type === 'plant' ? formatDate(p.date)
-    : (REC_TYPES[type] ? REC_TYPES[type].icon + ' ' + REC_TYPES[type].label : formatDate(p.date));
+  /* בכל סוג רשומה מוצג גם התאריך. קודם הוצגה רק התווית ("💨 ריסוס")
+     במקום התאריך, ולכן ריסוס, חיסול וזריעה נראו כאילו הגיעו בלי תאריך. */
+  const seasonLabel = type === 'plant'
+    ? formatDate(p.date)
+    : (REC_TYPES[type]
+        ? REC_TYPES[type].icon + ' ' + REC_TYPES[type].label
+          + (p.date ? ' · ' + formatDate(p.date) : '')
+        : formatDate(p.date));
 
   return `
   <div class="rec ${cls}" id="rec-${p.id}">
@@ -2520,6 +2526,15 @@ function segArrival(fieldName, bedNum, seg, segIdx, season) {
     if (legacy) return legacy;
   }
   var cd = plantDefs.find(function(x){ return x.name === seg.crop && x.season === season; });
+
+  /* תאריך שהוזן ידנית בלשונית ההזמנות, לירק הזה ולמשתל הזה.
+     נקבע פעם אחת וחל על כל הערוגות שבהן המשתל יושב — כך ששינוי
+     מועד אצל המשתלה הוא עריכה אחת ולא עשרות. */
+  if (cd) {
+    var od = orderOverrides[cd.id + '_' + (seg.wave || 1) + '_date'];
+    if (od) return od;
+  }
+
   var sd = cd ? getEffectiveStartDate(cd, season) : '';
   if (!sd) return '';
   var d = new Date(sd + 'T00:00:00');
@@ -3232,10 +3247,22 @@ function _renderRotationPlannerInner() {
                  +'border-radius:4px;padding:1px 5px;flex-shrink:0" title="לחצי לשינוי מצב">'+m.ic+' '+m.t+'</span>';
 
              var arr = segArrival(safeField, i, s, si, season);
-             out += '<span style="font-size:.55rem;color:#6b7280;flex-shrink:0">📦</span>';
+             /* מאיפה התאריך בא — כדי שיהיה ברור מה יקרה אם משנים כאן */
+             var _cdA = plantDefs.find(function(x){ return x.name === s.crop && x.season === season; });
+             var _fromOrder = !s.arriveDate && _cdA &&
+                   !!orderOverrides[_cdA.id + '_' + (s.wave || 1) + '_date'];
+             var _srcTtl = s.arriveDate
+                   ? 'תאריך שהוזן לערוגה הזו בלבד'
+                   : (_fromOrder
+                       ? 'מגיע מההזמנות — חל על כל הערוגות של המשתל. שינוי כאן יחול על הערוגה הזו בלבד'
+                       : 'מחושב לפי שבוע ההתחלה והמרווח');
+             out += '<span style="font-size:.55rem;color:'+(_fromOrder?'#7c3aed':'#6b7280')
+                 +';flex-shrink:0" title="'+escAttr(_srcTtl)+'">'+(_fromOrder?'🧾':'📦')+'</span>';
              out += '<input type="date" value="'+escAttr(arr)+'" onclick="event.stopPropagation()" '
-                 +'title="תאריך הגעה של המשתל" '
-                 +'style="font-size:.55rem;padding:0 2px;border:1px solid #bfdbfe;border-radius:3px;width:78px" '
+                 +'title="'+escAttr(_srcTtl)+'" '
+                 +'style="font-size:.55rem;padding:0 2px;border:1px solid '
+                 +(_fromOrder?'#c4b5fd':'#bfdbfe')+';border-radius:3px;width:78px'
+                 +(_fromOrder?';color:#7c3aed':'')+'" '
                  +'onchange="saveSegArrival(\''+safeField+'\','+i+','+si+',this.value)">';
 
              out += '<span style="font-size:.55rem;color:#6b7280;flex-shrink:0">🌱</span>';
