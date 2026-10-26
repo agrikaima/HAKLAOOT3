@@ -3559,9 +3559,9 @@ function _renderRotationPlannerInner() {
         var waveTag = '<span style="font-size:.62rem;background:'+(s.seq?'#7c3aed':'#1d4ed8')+';color:#fff;border-radius:4px;padding:0 4px;margin-right:3px;font-weight:700">'+(s.seq?'ח':'')+waveNum+'</span>';
         // wave arrival date from plantDef
         var segCropDef = plantDefs.find(function(p){ return p.name===s.crop && normSeason(p.season)===normSeason(season); });
-        var _segIso = segArrival(f.name, i, s, si, season);
+        var _segIso = segArrival(field.name, i, s, si, season);
         var waveDateStr = waveDateShort(_segIso);
-        var _segBlocked = segDateBlocked(f.name, i, s, si, season);
+        var _segBlocked = segDateBlocked(field.name, i, s, si, season);
         var _segManual = !_segBlocked && segCropDef && waveDateIsManual(segCropDef, waveNum);
         var waveDateSpan = '';
         if (waveDateStr) {
@@ -3572,7 +3572,7 @@ function _renderRotationPlannerInner() {
             ? ' title="בהזמנות רשום ' + waveDateShort(_segBlocked.orders)
               + ' — הערוגה מתעלמת כי יש לה תאריך משלה. לחצי כדי לבטל אותו."'
               + ' onclick="event.stopPropagation();clearSegOwnDate(\''
-              + f.name.replace(/'/g, "\\'") + '\',' + i + ',' + si + ')"'
+              + safeField + '\',' + i + ',' + si + ')"'
             : '';
           waveDateSpan = '<span style="' + _dSty + '"' + _dExtra + '>'
             + (_segBlocked ? '⚠' : '') + waveDateStr + '</span>';
