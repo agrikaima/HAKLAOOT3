@@ -191,6 +191,11 @@
     .rot-bed-cell input[type=number]{-moz-appearance:textfield;appearance:textfield;max-width:100%}
     .rot-bed-cell.bed-idle{border:2px solid #111827}
     .rot-bed-cell.bed-overdue{border:2px solid #d97706;box-shadow:0 0 0 2px #fde68a inset}
+    /* הדגשת משלוח — זמנית, מתאפסת ברענון */
+    .rot-bed-cell.bed-arrival{border:2.5px solid #ea580c;box-shadow:0 0 0 3px #fed7aa;background:#fff7ed}
+    .rot-bed-cell.bed-dimmed{opacity:.3}
+    @media print{.rot-bed-cell.bed-dimmed{opacity:1}
+      .rot-bed-cell.bed-arrival{border:2.5px solid #000;box-shadow:none}}
     .rot-bed-cell.rot-conflict{border-color:var(--red);background:#fef2f2}
     .rot-bed-cell.rot-warn{border-color:var(--amber);background:#fffbeb}
     .rot-bed-cell.rot-painted{border-width:2.5px;color:#fff}
@@ -1891,6 +1896,133 @@ function copyInvite(asTest) {
   }
 }
 
+/* ══════ הדגשת משלוח ══════
+   סימון זמני של הערוגות שאליהן מגיעים שתילים בתאריך מסוים.
+   לא נשמר בשום מקום — מתאפס ברענון, בדיוק כמו סימון ביד. */
+var _rotArrivalHL = null;
+
+/* כל תאריכי ההגעה בעונה, ממוינים, בלי כפילויות */
+function rotArrivalDates(season) {
+  var plan = rotationPlan[season] || {};
+  var set = {};
+  Object.keys(plan).forEach(function(key) {
+    var idx = key.lastIndexOf('_');
+    if (idx < 1) return;
+    var fieldName = key.slice(0, idx);
+    var bedNum = Number(key.slice(idx + 1));
+    var segs = getBedSegments(plan[key]);
+    segs.forEach(function(s, si) {
+      if (!s || !s.crop) return;
+      var d = segArrival(fieldName, bedNum, s, si, season);
+      if (d) set[d] = true;
+    });
+  });
+  return Object.keys(set).sort();
+}
+
+/* הערוגות שמקבלות שתילים בתאריך נתון */
+function rotBedsOnDate(season, iso) {
+  var plan = rotationPlan[season] || {};
+  var hits = [];
+  Object.keys(plan).forEach(function(key) {
+    var idx = key.lastIndexOf('_');
+    if (idx < 1) return;
+    var fieldName = key.slice(0, idx);
+    var bedNum = Number(key.slice(idx + 1));
+    var segs = getBedSegments(plan[key]);
+    segs.forEach(function(s, si) {
+      if (!s || !s.crop) return;
+      if (segArrival(fieldName, bedNum, s, si, season) === iso)
+        hits.push({ field: fieldName, bed: bedNum, crop: s.crop, wave: s.wave || 1, meters: s.meters });
+    });
+  });
+  return hits;
+}
+
+/* התאריך הקרוב הבא — הראשון שעוד לא עבר */
+function rotNextArrival(season) {
+  var all = rotArrivalDates(season);
+  var today = today_();
+  for (var i = 0; i < all.length; i++) if (all[i] >= today) return all[i];
+  return all.length ? all[all.length - 1] : null;
+}
+
+function today_() {
+  var d = new Date();
+  return _localISO(d);
+}
+
+function toggleArrivalHL() {
+  var season = document.getElementById('rot-plan-season').value.trim();
+  if (!season) return;
+  if (_rotArrivalHL) { _rotArrivalHL = null; renderRotationPlanner(); return; }
+  var nx = rotNextArrival(season);
+  if (!nx) { showToast('אין תאריכי הגעה בעונה הזו', 'err'); return; }
+  _rotArrivalHL = nx;
+  renderRotationPlanner();
+}
+
+/* מעבר למשלוח הקודם/הבא ברשימה */
+function stepArrivalHL(dir) {
+  var season = document.getElementById('rot-plan-season').value.trim();
+  if (!season) return;
+  var all = rotArrivalDates(season);
+  if (!all.length) return;
+  var at = all.indexOf(_rotArrivalHL);
+  if (at < 0) { _rotArrivalHL = rotNextArrival(season); renderRotationPlanner(); return; }
+  var nxt = at + dir;
+  if (nxt < 0 || nxt >= all.length) {
+    showToast(dir > 0 ? 'זה המשלוח האחרון' : 'זה המשלוח הראשון');
+    return;
+  }
+  _rotArrivalHL = all[nxt];
+  renderRotationPlanner();
+}
+
+function _heDate(iso) {
+  if (!iso) return '';
+  var p = String(iso).split('-');
+  if (p.length !== 3) return iso;
+  var d = new Date(iso + 'T00:00:00');
+  var days = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+  return 'יום ' + days[d.getDay()] + ' ' + Number(p[2]) + '/' + Number(p[1]);
+}
+
+/* הסרגל שמעל הרוטציה */
+function arrivalHLBar(season) {
+  var all = rotArrivalDates(season);
+  if (!all.length) return '';
+  if (!_rotArrivalHL) {
+    var nx = rotNextArrival(season);
+    var lbl = nx ? ' — ' + _heDate(nx) : '';
+    return '<div class="no-print" style="margin-bottom:8px">'
+      + '<button class="btn btn-outline btn-sm" onclick="toggleArrivalHL()" '
+      + 'style="border-color:#b45309;color:#b45309">🚚 הדגש את המשלוח הבא' + lbl + '</button></div>';
+  }
+  var hits = rotBedsOnDate(season, _rotArrivalHL);
+  var beds = {};
+  hits.forEach(function(h){ beds[h.field + '_' + h.bed] = true; });
+  var crops = {};
+  hits.forEach(function(h){ crops[h.crop] = (crops[h.crop] || 0) + 1; });
+  var cropList = Object.keys(crops).map(function(c){
+    return escHtml(c) + (crops[c] > 1 ? ' ×' + crops[c] : '');
+  }).join(' · ');
+  var at = all.indexOf(_rotArrivalHL);
+  return '<div class="no-print" style="margin-bottom:8px;background:#fff7ed;border:1.5px solid #fdba74;'
+    + 'border-radius:9px;padding:8px 11px">'
+    + '<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">'
+    + '<button class="btn btn-outline btn-sm" onclick="stepArrivalHL(-1)" style="padding:1px 7px" title="המשלוח הקודם">→</button>'
+    + '<strong style="color:#9a3412">🚚 ' + _heDate(_rotArrivalHL) + '</strong>'
+    + '<button class="btn btn-outline btn-sm" onclick="stepArrivalHL(1)" style="padding:1px 7px" title="המשלוח הבא">←</button>'
+    + '<span style="font-size:.78rem;color:#9a3412">'
+    + Object.keys(beds).length + ' ערוגות · ' + hits.length + ' משתלים</span>'
+    + '<span style="font-size:.7rem;color:#9ca3af">(' + (at + 1) + ' מתוך ' + all.length + ')</span>'
+    + '<button class="btn btn-outline btn-sm" onclick="toggleArrivalHL()" style="margin-right:auto">✕ בטל הדגשה</button>'
+    + '</div>'
+    + (cropList ? '<div style="font-size:.76rem;color:#7c2d12;margin-top:4px;line-height:1.5">' + cropList + '</div>' : '')
+    + '</div>';
+}
+
 /* ══════ גיליון בדיקה ══════
    כתובת סקריפט של גיליון נפרד, שנשמרת כאן בלבד ואינה מחליפה
    את החיבור של החווה. ממנה נבנה קישור הזמנה לבדיקה משותפת:
@@ -2702,6 +2834,22 @@ function segShluhot(fieldName, seg) {
   return Math.round((seg.meters / _bedLenOf(fieldName)) * 2) / 2;
 }
 
+/* שיבוץ לרוחב — הקלט הוא אורך לאורך הערוגה, על כל השלוחות */
+function saveSegLength(fieldName, bedNum, segIdx, val) {
+  var c = _segOf(fieldName, bedNum, segIdx); if (!c) return;
+  var n = parseFloat(String(val).replace(',', '.'));
+  if (isNaN(n) || n <= 0) { renderRotationPlanner(); return; }
+  var f = FIELD_DEFS.find(function(x){ return x.name === fieldName; });
+  var nd = (f && f.drips) ? f.drips : 1;
+  var bedLen = _bedLenOf(fieldName);
+  if (n > bedLen + 0.05) {
+    showToast('⚠ ' + n + 'מ׳ ארוך מהערוגה (' + bedLen + 'מ׳)');
+  }
+  c.seg.meters = Math.round(n * nd * 10) / 10;
+  _saveSegs(c);
+  showToast(c.seg.crop + ' — ' + n + 'מ׳ על ' + nd + ' שלוחות · ' + c.seg.meters + 'מ׳ צינור');
+}
+
 function saveSegShluhot(fieldName, bedNum, segIdx, val) {
   var c = _segOf(fieldName, bedNum, segIdx); if (!c) return;
   var n = parseFloat(String(val).replace(',', '.'));
@@ -3462,6 +3610,9 @@ function _renderRotationPlannerInner() {
 
   let html = '';
 
+  /* סרגל הדגשת משלוח */
+  html += arrivalHLBar(season);
+
   /* רצועת הנחיה כשמשתל מורם */
   if (_rotHeld) {
     html += '<div style="position:sticky;top:0;z-index:30;background:#f59e0b;color:#fff;'
@@ -3625,18 +3776,37 @@ function _renderRotationPlannerInner() {
                      + 'border:1px solid #a7f3d0;border-radius:3px;text-align:center;'
                      + 'direction:ltr;box-sizing:border-box;height:15px';
              var lbl = 'font-size:.53rem;color:#6b7280;flex-shrink:0';
-             return '<div style="padding-right:9px;margin-top:1px;max-width:100%;overflow:hidden" '
-               +'onclick="event.stopPropagation()" class="no-print">'
-               +'<div style="display:flex;align-items:center;gap:2px">'
+             /* לאורך: היחידה היא שלוחה שלמה לכל אורך הערוגה.
+                לרוחב: הגידול תופס את כל השלוחות אבל רק חלק מאורך
+                הערוגה — ולכן המספר המשמעותי הוא אורך, לא שלוחות.
+                שומר על 4 שלוחות ברוחב 30 מ׳ אינו "4 שלוחות"
+                (שהן 180 מ׳ צינור) אלא 30 מ׳ אורך = 120 מ׳ צינור. */
+             var _isAlong2 = (s.orient === 'along') || (!s.orient && isDripBedSp);
+             var _nDrips = field.drips || 1;
+             var firstRow;
+             if (_isAlong2) {
+               firstRow = '<div style="display:flex;align-items:center;gap:2px">'
                  +'<span style="'+lbl+'">שלוחות</span>'
                  +'<input type="number" step="0.5" min="0.5" value="'+sh+'" '
-                   +'title="שלוחות — אפשר חצאים" style="'+inp+'" '
+                   +'title="שלוחות שלמות לכל אורך הערוגה — אפשר חצאים" style="'+inp+'" '
                    +'onchange="saveSegShluhot(\''+safeField+'\','+i+','+si+',this.value)">'
-               +'</div>'
+                 +'</div>';
+             } else {
+               var _len = Math.round((s.meters / _nDrips) * 10) / 10;
+               firstRow = '<div style="display:flex;align-items:center;gap:2px">'
+                 +'<span style="'+lbl+'" title="אורך לאורך הערוגה, על כל '+_nDrips+' השלוחות">אורך</span>'
+                 +'<input type="number" step="0.5" min="0.5" value="'+_len+'" '
+                   +'title="כמה מטרים מאורך הערוגה, על כל '+_nDrips+' השלוחות" style="'+inp+'" '
+                   +'onchange="saveSegLength(\''+safeField+'\','+i+','+si+',this.value)">'
+                 +'</div>';
+             }
+             return '<div style="padding-right:9px;margin-top:1px;max-width:100%;overflow:hidden" '
+               +'onclick="event.stopPropagation()" class="no-print">'
+               + firstRow
                +'<div style="display:flex;align-items:center;gap:2px;margin-top:1px">'
-                 +'<span style="'+lbl+'">מ׳</span>'
+                 +'<span style="'+lbl+'" title="סך מטרי הטפטוף">מ׳ צינור</span>'
                  +'<input type="number" step="0.5" min="0.5" value="'+s.meters+'" '
-                   +'title="מטרי צינור" style="'+inp+'" '
+                   +'title="מטרי צינור — סך הכל" style="'+inp+'" '
                    +'onchange="saveSegMeters(\''+safeField+'\','+i+','+si+',this.value)">'
                +'</div>'
                +'</div>';
@@ -3894,7 +4064,15 @@ function _renderRotationPlannerInner() {
         ? '<div style="font-size:.56rem;color:#b45309;font-weight:700;background:#fef3c7;border-radius:3px;padding:0 3px;margin-top:2px">⚠ '+overdueDays+' ימים ללא עדכון</div>'
         : '';
 
-      const cellHtml = '<div class="rot-bed-cell '+conflictCls2+idleCls+overdueCls+'" style="cursor:pointer;'+mifteachBg+'" onclick="paintBed(\''+safeField+'\','+i+')">'
+      /* הדגשת משלוח — הערוגה מקבלת שתילים בתאריך המסומן */
+      var arrivalCls = '';
+      if (_rotArrivalHL) {
+        var _hit = segs.some(function(s, si) {
+          return s && s.crop && segArrival(field.name, i, s, si, season) === _rotArrivalHL;
+        });
+        arrivalCls = _hit ? ' bed-arrival' : ' bed-dimmed';
+      }
+      const cellHtml = '<div class="rot-bed-cell '+conflictCls2+idleCls+overdueCls+arrivalCls+'" style="cursor:pointer;'+mifteachBg+'" onclick="paintBed(\''+safeField+'\','+i+')">'
         + mifteachLabel
         + '<div class="rot-bed-num">'+i+dripBadge+'</div>'
         + prevHtml2 + confHtml2
