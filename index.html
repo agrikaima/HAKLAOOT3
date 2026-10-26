@@ -275,6 +275,12 @@
   <button onclick="pullFromSheets()" style="margin:0 8px;padding:4px 10px;border:0;border-radius:6px;background:#fff;color:#1b4332;font-weight:bold">משוך עכשיו</button>
   <button onclick="dismissRemote()" style="padding:4px 10px;border:1px solid #fff;border-radius:6px;background:transparent;color:#fff">אחר כך</button>
 </div>
+<div id="testBanner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:3500;
+     background:#b45309;color:#fff;text-align:center;font-size:.8rem;font-weight:700;
+     padding:6px 10px;line-height:1.35">
+  🧪 מצב בדיקה — שינויים נשמרים במכשיר הזה בלבד ולא נשלחים לגיליון
+</div>
+
 <!-- ══════════ מסך פתיחה ══════════ -->
 <div id="welcome" style="display:none">
   <div class="wel-box">
@@ -1420,7 +1426,39 @@
       <div style="font-size:.78rem;color:var(--muted);margin-bottom:6px;line-height:1.5">
         כדי לצרף עובד לחווה הזו — לשלוח לו קישור הזמנה. הוא נכנס ומחובר, בלי להקליד כלום.
       </div>
-      <button class="btn btn-outline btn-sm" onclick="copyInvite()">🔗 העתק קישור הזמנה</button>
+      <div style="display:flex;gap:7px;flex-wrap:wrap">
+        <button class="btn btn-outline btn-sm" onclick="copyInvite(false)">🔗 קישור הזמנה</button>
+        <button class="btn btn-outline btn-sm" onclick="copyInvite(true)"
+                style="border-color:#b45309;color:#b45309">🧪 קישור להתנסות</button>
+      </div>
+    </div>
+
+    <div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border)">
+      <div style="font-size:.78rem;color:var(--muted);margin-bottom:6px;line-height:1.55">
+        <b style="color:#b45309">🧪 בדיקה משותפת על גיליון נפרד</b><br>
+        להעתיק את הגיליון (File ← Make a copy), לפרוס את הסקריפט שבעותק
+        (Extensions ← Apps Script ← Deploy ← New deployment ← Web app, גישה: Anyone)
+        ולהדביק כאן את הכתובת שמסתיימת ב-/exec. הסנכרון יעבוד במלואו — נגד העותק.
+      </div>
+      <input type="url" id="cfg-sandbox" placeholder="https://script.google.com/macros/s/.../exec"
+             dir="ltr" onchange="saveSandboxUrl(this.value)">
+      <div id="sandbox-note" style="display:none;font-size:.76rem;line-height:1.5;margin-top:5px"></div>
+      <button class="btn btn-outline btn-sm" onclick="copySandboxInvite()"
+              style="margin-top:7px;border-color:#b45309;color:#b45309">🧪 קישור לגיליון בדיקה</button>
+    </div>
+
+    <div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border)">
+      <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer">
+        <input type="checkbox" id="cfg-test" onchange="setTestMode(this.checked)"
+               style="width:auto;margin-top:3px;flex-shrink:0">
+        <span>
+          <b style="color:#b45309">🧪 מצב בדיקה</b>
+          <span style="display:block;font-size:.78rem;color:var(--muted);line-height:1.55;margin-top:2px">
+            קוראים מהגיליון כרגיל, אבל שום שינוי לא נשלח אליו. מתאים להתנסות על
+            נתונים אמיתיים בלי סיכון.
+          </span>
+        </span>
+      </label>
     </div>
     <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
       <button class="btn btn-outline btn-sm" onclick="testConn()">בדוק חיבור</button>
@@ -1727,6 +1765,10 @@ function applyJoinLink() {
     settings.farmName = farm.trim();
     did = true;
   }
+  if (q.get('test') === '1') {            /* קישור להתנסות */
+    settings.testMode = true;
+    did = true;
+  }
   if (did) {
     localStorage.setItem('settings', JSON.stringify(settings));
     /* ניקוי הכתובת, כדי שהקישור לא יישאר בהיסטוריה ובשיתופים */
@@ -1735,14 +1777,20 @@ function applyJoinLink() {
   return did;
 }
 
-/* בניית קישור ההזמנה לצוות */
-function inviteLink() {
-  var id = settings.scriptUrl || '';
+/* בניית קישור הזמנה לכתובת סקריפט נתונה */
+function inviteLinkFor(scriptUrl, farm) {
+  var id = String(scriptUrl || '').trim();
   var m = id.match(/\/macros\/s\/([^\/]+)\/exec/);
   if (m) id = m[1];
+  if (!id) return '';
   var u = location.origin + location.pathname + '?join=' + encodeURIComponent(id);
-  if (farmName()) u += '&farm=' + encodeURIComponent(farmName());
+  if (farm) u += '&farm=' + encodeURIComponent(farm);
   return u;
+}
+
+/* בניית קישור ההזמנה לצוות */
+function inviteLink() {
+  return inviteLinkFor(settings.scriptUrl, farmName());
 }
 
 /* ══════ מסך הפתיחה ══════
@@ -1800,14 +1848,93 @@ function welFinishJoin() {
   if (typeof pullFromSheets === 'function') pullFromSheets();
 }
 
-function copyInvite() {
+/* ══════ מצב בדיקה ══════
+   קריאה מהגיליון מותרת, כתיבה אליו חסומה. כך אפשר להתנסות על
+   נתונים אמיתיים בלי שום סיכון לדרוס אותם. */
+function isTestMode() { return !!settings.testMode; }
+
+function paintTestBanner() {
+  var el = document.getElementById('testBanner');
+  if (!el) return;
+  el.style.display = isTestMode() ? 'block' : 'none';
+  document.body.style.paddingTop = isTestMode() ? '30px' : '';
+}
+
+function setTestMode(on, silent) {
+  if (!on && isTestMode() && !silent) {
+    if (!confirm('יציאה ממצב בדיקה.\n\nמעכשיו כל שינוי יישלח לגיליון האמיתי, '
+      + 'וגם מה שהוזן עד כה במכשיר הזה עלול להישלח.\n\n'
+      + 'אם ההתנסות כאן לא נועדה להישמר — עדיף קודם למשוך מהגיליון.\n\nלהמשיך?')) {
+      var cb = document.getElementById('cfg-test');
+      if (cb) cb.checked = true;
+      return;
+    }
+  }
+  settings.testMode = !!on;
+  localStorage.setItem('settings', JSON.stringify(settings));
+  paintTestBanner();
+  var cb2 = document.getElementById('cfg-test');
+  if (cb2) cb2.checked = isTestMode();
+  showToast(isTestMode()
+    ? '🧪 מצב בדיקה פעיל — שינויים נשמרים כאן בלבד'
+    : '✓ מצב בדיקה כובה — שינויים נשלחים לגיליון');
+}
+
+function copyInvite(asTest) {
   if (!settings.scriptUrl) { showToast('אין עדיין חיבור לגיליון','err'); return; }
-  var u = inviteLink();
-  var done = function(){ showToast('✓ קישור ההזמנה הועתק'); };
+  var u = inviteLink() + (asTest ? '&test=1' : '');
+  var done = function(){ showToast(asTest ? '🧪 קישור להתנסות הועתק' : '✓ קישור ההזמנה הועתק'); };
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(u).then(done, function(){ prompt('העתיקי את הקישור:', u); });
   } else {
     prompt('העתיקי את הקישור:', u);
+  }
+}
+
+/* ══════ גיליון בדיקה ══════
+   כתובת סקריפט של גיליון נפרד, שנשמרת כאן בלבד ואינה מחליפה
+   את החיבור של החווה. ממנה נבנה קישור הזמנה לבדיקה משותפת:
+   הסנכרון עובד באמת, אבל נגד העותק. */
+function saveSandboxUrl(v) {
+  settings.sandboxUrl = String(v || '').trim();
+  localStorage.setItem('settings', JSON.stringify(settings));
+  paintSandbox();
+}
+
+function paintSandbox() {
+  var note = document.getElementById('sandbox-note');
+  if (!note) return;
+  var u = (settings.sandboxUrl || '').trim();
+  if (!u) { note.textContent = ''; note.style.display = 'none'; return; }
+  var ok = /\/macros\/s\/[^\/]+\/exec/.test(u);
+  var prod = (settings.scriptUrl || '').trim();
+  note.style.display = 'block';
+  if (!ok) {
+    note.style.color = '#b91c1c';
+    note.textContent = '⚠️ הכתובת צריכה להיות של Apps Script ולהסתיים ב-/exec';
+  } else if (prod && u === prod) {
+    note.style.color = '#b91c1c';
+    note.textContent = '⚠️ זו אותה כתובת של החווה — זה לא גיליון נפרד. צריך עותק של הגיליון עם פריסה חדשה.';
+  } else {
+    note.style.color = '#15803d';
+    note.textContent = '✓ גיליון נפרד. קישור הבדיקה יצביע לכאן, לא לגיליון של החווה.';
+  }
+}
+
+function copySandboxInvite() {
+  var u = (settings.sandboxUrl || '').trim();
+  if (!u) { showToast('קודם להדביק את כתובת הסקריפט של גיליון הבדיקה','err'); return; }
+  if (!/\/macros\/s\/[^\/]+\/exec/.test(u)) { showToast('הכתובת לא נראית כמו Apps Script','err'); return; }
+  if (u === (settings.scriptUrl || '').trim()) {
+    if (!confirm('הכתובת זהה לגיליון של החווה — הבדיקה תיכתב לנתונים האמיתיים.\nלהמשיך בכל זאת?')) return;
+  }
+  var farm = (farmName() ? farmName() + ' — בדיקה' : 'בדיקה');
+  var link = inviteLinkFor(u, farm);
+  var done = function(){ showToast('🧪 קישור לגיליון הבדיקה הועתק'); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(link).then(done, function(){ prompt('העתיקי את הקישור:', link); });
+  } else {
+    prompt('העתיקי את הקישור:', link);
   }
 }
 
@@ -1945,6 +2072,9 @@ document.addEventListener('DOMContentLoaded', () => {
   /* קישור הזמנה קודם — הוא עשוי להגדיר חיבור ושם חווה */
   applyJoinLink();
   if (needsWelcome()) showWelcome();
+  paintTestBanner();
+  var _tcb = document.getElementById('cfg-test');
+  if (_tcb) _tcb.checked = isTestMode();
 
   /* שם האפליקציה, שם החווה וספירת הערוגות האמיתית */
   paintFarmName();
@@ -1958,6 +2088,9 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('p-date').value = today();
   if (settings.scriptUrl) document.getElementById('cfg-url').value = settings.scriptUrl;
   if (settings.sheetUrl) document.getElementById('cfg-sheet-url').value = settings.sheetUrl;
+  var _sbIn = document.getElementById('cfg-sandbox');
+  if (_sbIn && settings.sandboxUrl) _sbIn.value = settings.sandboxUrl;
+  paintSandbox();
   updateConnStatus();
   updateSheetLink();
   renderFieldSelects();
@@ -2784,20 +2917,37 @@ function segArrival(fieldName, bedNum, seg, segIdx, season) {
     if (legacy) return legacy;
   }
   var cd = plantDefs.find(function(x){ return x.name === seg.crop && x.season === season; });
+  return waveDateISO(cd, seg.wave || 1, season);
+}
 
-  /* תאריך שהוזן ידנית בלשונית ההזמנות, לירק הזה ולמשתל הזה.
-     נקבע פעם אחת וחל על כל הערוגות שבהן המשתל יושב — כך ששינוי
-     מועד אצל המשתלה הוא עריכה אחת ולא עשרות. */
-  if (cd) {
-    var od = orderOverrides[cd.id + '_' + (seg.wave || 1) + '_date'];
-    if (od) return od;
+/* האם לשיבוץ הזה יש תאריך משלו שחוסם את מה שהוקלד בהזמנות.
+   זה קרה בשקט עד כה: הערוגה פשוט התעלמה מהתיקון. */
+function segDateBlocked(fieldName, bedNum, seg, segIdx, season) {
+  var own = seg.arriveDate
+    || (segIdx === 0 ? (rotationDelivery[season] || {})[fieldName + '_' + bedNum] : '');
+  if (!own) return null;
+  var cd = plantDefs.find(function(x){ return x.name === seg.crop && x.season === season; });
+  if (!cd) return null;
+  var fromOrders = orderOverrides[cd.id + '_' + (seg.wave || 1) + '_date'];
+  if (!fromOrders || fromOrders === own) return null;
+  return { own: own, orders: fromOrders, defId: cd.id };
+}
+
+/* ניקוי התאריך הפרטי של השיבוץ, כדי שתאריך ההזמנות יחול */
+function clearSegOwnDate(fieldName, bedNum, segIdx) {
+  var season = document.getElementById('rot-plan-season').value.trim();
+  if (!season) return;
+  var key = fieldName + '_' + bedNum;
+  var segs = getBedSegments(rotationPlan[season] && rotationPlan[season][key]);
+  if (segs[segIdx]) {
+    delete segs[segIdx].arriveDate;
+    rotationPlan[season][key] = segs;
+    if (segIdx === 0 && rotationDelivery[season]) delete rotationDelivery[season][key];
+    saveRotationPlan();
+    localStorage.setItem('rotationDelivery', JSON.stringify(rotationDelivery));
+    renderRotationPlanner();
+    showToast('✓ הערוגה חזרה לתאריך שבלשונית ההזמנות');
   }
-
-  var sd = cd ? getEffectiveStartDate(cd, season) : '';
-  if (!sd) return '';
-  var d = new Date(sd + 'T00:00:00');
-  d.setDate(d.getDate() + ((seg.wave || 1) - 1) * (cd.interval || 0) * 7);
-  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
 
 function saveSegArrival(fieldName, bedNum, segIdx, dateVal) {
@@ -3409,14 +3559,24 @@ function _renderRotationPlannerInner() {
         var waveTag = '<span style="font-size:.62rem;background:'+(s.seq?'#7c3aed':'#1d4ed8')+';color:#fff;border-radius:4px;padding:0 4px;margin-right:3px;font-weight:700">'+(s.seq?'ח':'')+waveNum+'</span>';
         // wave arrival date from plantDef
         var segCropDef = plantDefs.find(function(p){ return p.name===s.crop && normSeason(p.season)===normSeason(season); });
-        var waveDateStr = '';
-        var _segEffSD = segCropDef ? getEffectiveStartDate(segCropDef, season) : '';
-        if (segCropDef && _segEffSD) {
-          var wd = new Date(_segEffSD + 'T00:00:00');
-          wd.setDate(wd.getDate() + (waveNum - 1) * (segCropDef.interval || 0) * 7);
-          waveDateStr = wd.getDate() + '/' + (wd.getMonth()+1);
+        var _segIso = segArrival(f.name, i, s, si, season);
+        var waveDateStr = waveDateShort(_segIso);
+        var _segBlocked = segDateBlocked(f.name, i, s, si, season);
+        var _segManual = !_segBlocked && segCropDef && waveDateIsManual(segCropDef, waveNum);
+        var waveDateSpan = '';
+        if (waveDateStr) {
+          var _dCol = _segBlocked ? '#b91c1c' : (_segManual ? '#7c3aed' : '#0369a1');
+          var _dSty = 'font-size:.55rem;margin-left:1px;flex-shrink:0;color:' + _dCol
+                    + (_segBlocked ? ';cursor:pointer;font-weight:700' : '');
+          var _dExtra = _segBlocked
+            ? ' title="בהזמנות רשום ' + waveDateShort(_segBlocked.orders)
+              + ' — הערוגה מתעלמת כי יש לה תאריך משלה. לחצי כדי לבטל אותו."'
+              + ' onclick="event.stopPropagation();clearSegOwnDate(\''
+              + f.name.replace(/'/g, "\\'") + '\',' + i + ',' + si + ')"'
+            : '';
+          waveDateSpan = '<span style="' + _dSty + '"' + _dExtra + '>'
+            + (_segBlocked ? '⚠' : '') + waveDateStr + '</span>';
         }
-        var waveDateSpan = waveDateStr ? '<span style="font-size:.55rem;color:#0369a1;margin-left:1px;flex-shrink:0">'+waveDateStr+'</span>' : '';
         var segNoteId = 'segnote-'+safeField+'_'+i+'_'+si;
         var segNoteVal = s.note || '';
         /* השם מקבל את כל רוחב המשבצת, והאייקונים יורדים לשורה משלהם.
@@ -3621,7 +3781,7 @@ function _renderRotationPlannerInner() {
       var bedKey2 = field.name + '_' + i;
       var noteText = (rotationNotes[season2] && rotationNotes[season2][bedKey2]) || '';
       var noteInputId = 'bed-note-input-' + field.name.replace(/\s/g,'_') + '_' + i;
-      var primSegForDate = segs[0]; var autoDeliveryISO = ''; if (primSegForDate) {   var primSegCropDef = plantDefs.find(function(d){ return d.name===primSegForDate.crop && normSeason(d.season)===normSeason(season2); });   var primSegEffSD = primSegCropDef ? getEffectiveStartDate(primSegCropDef, season2) : '';   if (primSegCropDef && primSegEffSD) {     var pwd = new Date(primSegEffSD + 'T00:00:00');     pwd.setDate(pwd.getDate() + ((primSegForDate.wave||1) - 1) * (primSegCropDef.interval || 0) * 7);     autoDeliveryISO = pwd.getFullYear() + '-' + String(pwd.getMonth()+1).padStart(2,'0') + '-' + String(pwd.getDate()).padStart(2,'0');   } } var deliveryDate  = (rotationDelivery[season2]  && rotationDelivery[season2][bedKey2])  || autoDeliveryISO || '';
+      var primSegForDate = segs[0]; var autoDeliveryISO = ''; if (primSegForDate) {   var primSegCropDef = plantDefs.find(function(d){ return d.name===primSegForDate.crop && normSeason(d.season)===normSeason(season2); });   autoDeliveryISO = waveDateISO(primSegCropDef, primSegForDate.wave || 1, season2); } var deliveryDate  = (rotationDelivery[season2]  && rotationDelivery[season2][bedKey2])  || autoDeliveryISO || '';
       var clearanceDate = (rotationClearance[season2] && rotationClearance[season2][bedKey2]) || '';
       var fmtDate = function(d){var p=d.split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0].slice(2):d;};
       var fmtDel = deliveryDate  ? fmtDate(deliveryDate)  : '';
@@ -4282,20 +4442,27 @@ function renderRotationNeeds(season) {
     if (_effSD && r.d.waves > 1) {
       var waveLines = [];
       for (var wi = 0; wi < r.d.waves; wi++) {
-        var wDate = new Date(_effSD + 'T00:00:00');
-        wDate.setDate(wDate.getDate() + wi * (r.d.interval || 0) * 7);
-        var wLabel = 'משתל ' + (wi+1) + ': ' + wDate.getDate() + '/' + (wDate.getMonth()+1) + '/' + wDate.getFullYear();
-        waveLines.push(wLabel);
+        var _wIso = waveDateISO(r.d, wi + 1, season);
+        if (!_wIso) continue;
+        var _wD = new Date(_wIso + 'T00:00:00');
+        var _man = waveDateIsManual(r.d, wi + 1);
+        var wLabel = 'משתל ' + (wi+1) + ': ' + _wD.getDate() + '/' + (_wD.getMonth()+1) + '/' + _wD.getFullYear();
+        waveLines.push(_man
+          ? '<span style="color:#7c3aed;font-weight:600">' + wLabel + '</span>'
+          : wLabel);
       }
       waveDatesHtml = '<div style="font-size:.65rem;color:#0369a1;margin-top:2px;line-height:1.6">' + waveLines.join('<br>') + '</div>';
     } else if (_effSD && r.d.waves <= 1) {
-      var sd = new Date(_effSD + 'T00:00:00');
-      waveDatesHtml = '<div style="font-size:.65rem;color:#0369a1;margin-top:2px">' + sd.getDate() + '/' + (sd.getMonth()+1) + '/' + sd.getFullYear() + '</div>';
+      var _sIso = waveDateISO(r.d, 1, season) || _effSD;
+      var sd = new Date(_sIso + 'T00:00:00');
+      waveDatesHtml = '<div style="font-size:.65rem;margin-top:2px;color:'
+        + (waveDateIsManual(r.d, 1) ? '#7c3aed;font-weight:600' : '#0369a1') + '">'
+        + sd.getDate() + '/' + (sd.getMonth()+1) + '/' + sd.getFullYear() + '</div>';
     }
     // harvest date
     if (r.d.daysHarvest && _effSD) {
-      var lastWaveStart = new Date(_effSD + 'T00:00:00');
-      lastWaveStart.setDate(lastWaveStart.getDate() + ((r.d.waves||1)-1) * (r.d.interval||0) * 7);
+      var _lastIso = waveDateISO(r.d, r.d.waves || 1, season) || _effSD;
+      var lastWaveStart = new Date(_lastIso + 'T00:00:00');
       var harvestDate = new Date(lastWaveStart);
       harvestDate.setDate(harvestDate.getDate() + r.d.daysHarvest);
       waveDatesHtml += '<div style="font-size:.63rem;color:#059669;margin-top:1px">🌿 קטיף ~' + harvestDate.getDate() + '/' + (harvestDate.getMonth()+1) + '</div>';
@@ -4513,12 +4680,7 @@ async function exportFieldMapToSheets() {
           var waveNum = s.wave || 1;
           var arrivalDate = '';
           var cropDef2 = plantDefs.find(function(p){ return p.name === s.crop && normSeason(p.season) === normSeason(season); });
-          var _fmSD = cropDef2 ? getEffectiveStartDate(cropDef2, season) : '';
-          if (_fmSD) {
-            var wd = new Date(_fmSD + 'T00:00:00');
-            wd.setDate(wd.getDate() + (waveNum - 1) * (cropDef2.interval || 0) * 7);
-            arrivalDate = wd.getDate() + '/' + (wd.getMonth()+1);
-          }
+          arrivalDate = waveDateShort(waveDateISO(cropDef2, waveNum, season));
           return { crop: s.crop, meters: s.meters, wave: waveNum, color: color, arrivalDate: arrivalDate, seq: !!s.seq };
         });
       bedData.push({ bedNum: b, segments: mappedSegs });
@@ -4574,6 +4736,38 @@ function getEffectiveStartDate(cropDef, season) {
   }
   return cropDef.startDate || '';
 }
+
+/* ══════ תאריך ההגעה של משתל — מקור אמת אחד ══════
+   כל מקום באפליקציה שמציג תאריך הגעה עובר דרך כאן, ולכן
+   תאריך שהוזן ידנית בלשונית ההזמנות חל בכל מקום בבת אחת.
+   עד כה החישוב הזה היה משוכפל בעשרה מקומות, ורק שניים מהם
+   הסתכלו על התאריכים הידניים. */
+function waveDateISO(cropDef, wave, season) {
+  if (!cropDef) return '';
+  var w = Number(wave) || 1;
+  var sn = season || cropDef.season || '';
+  var od = orderOverrides[cropDef.id + '_' + w + '_date'];
+  if (od) return od;
+  var sd = getEffectiveStartDate(cropDef, sn);
+  if (!sd) return '';
+  var d = new Date(sd + 'T00:00:00');
+  d.setDate(d.getDate() + (w - 1) * (Number(cropDef.interval) || 0) * 7);
+  return _localISO(d);
+}
+
+/* האם התאריך הזה הוזן ידנית — לצביעה ולסימון */
+function waveDateIsManual(cropDef, wave) {
+  if (!cropDef) return false;
+  return !!orderOverrides[cropDef.id + '_' + (Number(wave) || 1) + '_date'];
+}
+
+/* תצוגה קצרה: 26/10 */
+function waveDateShort(iso) {
+  if (!iso) return '';
+  var p = String(iso).split('-');
+  return p.length === 3 ? (Number(p[2]) + '/' + Number(p[1])) : iso;
+}
+
 function _previewStartWeek() {
   var week     = parseInt(document.getElementById('od-start-week').value);
   var waves    = parseInt(document.getElementById('od-waves').value)    || 1;
@@ -4642,8 +4836,9 @@ function buildWeeklySchedule(season) {
     var effStart = getEffectiveStartDate(d, season);
     if (!effStart) return;
     for (var w = 1; w <= (d.waves || 1); w++) {
-      var date = new Date(effStart + 'T00:00:00');
-      date.setDate(date.getDate() + (w - 1) * (d.interval || 0) * 7);
+      var _wIso2 = waveDateISO(d, w, season);
+      if (!_wIso2) continue;
+      var date = new Date(_wIso2 + 'T00:00:00');
       var mon = _snapToMonday(date);
       var key = _localISO(mon);
       if (!weekMap[key]) weekMap[key] = { date: key, holidays: _weekHolidays(mon), items: [] };
@@ -5168,17 +5363,9 @@ function renderOrderTable() {
         <td>${w===1?escHtml(d.field||'—'):''}</td>
         <td><span class="wave-badge">משתל ${w}</span></td>
         <td class="editable" style="min-width:110px">${(function(){
-          var effSD = getEffectiveStartDate(d, d.season);
-          var calcDate = '';
-          if (effSD) {
-            var wd = new Date(effSD + 'T00:00:00');
-            wd.setDate(wd.getDate() + (w-1) * (d.interval||0) * 7);
-            calcDate = _localISO(wd);
-          }
-          var overrideDate = getOverride(d.id,w,'date');
-          var displayVal = overrideDate || calcDate;
-          var displayLabel = displayVal ? (function(s){ var p=s.split('-'); return p[2]+'/'+p[1]; })(displayVal) : '—';
-          var isOverride = !!overrideDate;
+          var displayVal = waveDateISO(d, w, d.season);
+          var displayLabel = displayVal ? waveDateShort(displayVal) : '—';
+          var isOverride = waveDateIsManual(d, w);
           return '<span style="font-size:.78rem;font-weight:600;color:'+(isOverride?'#7c3aed':'#0369a1')+';cursor:pointer" '
             + 'onclick="this.nextSibling.style.display=\'block\';this.style.display=\'none\'" title="לחץ לשינוי">'
             + displayLabel + '</span>'
@@ -7225,6 +7412,7 @@ function removeProcCat(i) {
 
 // ── Sheets ────────────────────────────────────
 async function sendToSheets(rec) {
+  if (isTestMode()) return false;          /* מצב בדיקה — לא כותבים לגיליון */
   if (!settings.scriptUrl) return false;
   try {
     // Google Apps Script לא מחזיר CORS headers ל-POST,
@@ -7344,12 +7532,11 @@ function exportCatalogCSV() {
     var c = calcDefLocal(d);
     // calculate per-wave dates
     var waveDateCols = [];
-    if (d.startDate) {
-      for (var wi = 0; wi < (d.waves || 1); wi++) {
-        var wDate = new Date(d.startDate);
-        wDate.setDate(wDate.getDate() + wi * (d.interval || 0) * 7);
-        waveDateCols.push('משתל ' + (wi+1) + ': ' + wDate.getDate() + '/' + (wDate.getMonth()+1) + '/' + wDate.getFullYear());
-      }
+    for (var wi = 0; wi < (d.waves || 1); wi++) {
+      var _cIso = waveDateISO(d, wi + 1, d.season);
+      if (!_cIso) continue;
+      var wDate = new Date(_cIso + 'T00:00:00');
+      waveDateCols.push('משתל ' + (wi+1) + ': ' + wDate.getDate() + '/' + (wDate.getMonth()+1) + '/' + wDate.getFullYear());
     }
     rows.push([
       d.name, d.season,
@@ -7403,12 +7590,11 @@ async function exportCatalogToSheets() {
   var rows = defs.map(function(d) {
     var c = calcDefLocal(d);
     var waveDates = [];
-    if (d.startDate) {
-      for (var wi = 0; wi < (d.waves || 1); wi++) {
-        var wDate = new Date(d.startDate);
-        wDate.setDate(wDate.getDate() + wi * (d.interval || 0) * 7);
-        waveDates.push(wDate.getDate() + '/' + (wDate.getMonth()+1) + '/' + wDate.getFullYear());
-      }
+    for (var wi = 0; wi < (d.waves || 1); wi++) {
+      var _cIso2 = waveDateISO(d, wi + 1, d.season);
+      if (!_cIso2) continue;
+      var wDate = new Date(_cIso2 + 'T00:00:00');
+      waveDates.push(wDate.getDate() + '/' + (wDate.getMonth()+1) + '/' + wDate.getFullYear());
     }
     return {
       name: d.name, season: d.season,
@@ -7546,6 +7732,7 @@ function save() {
 }
 
 function syncToSheets() {
+  if (isTestMode()) return;                /* מצב בדיקה — לא כותבים לגיליון */
   if (!settings.scriptUrl) return;
   fetch(settings.scriptUrl, {
     method: 'POST',
@@ -7634,8 +7821,18 @@ function applyRemote(payload) {
     if (d[k] !== undefined) localStorage.setItem(k, JSON.stringify(d[k]));
   });
   if (d.settings) {
+    /* הגדרות החיבור שייכות למכשיר, לא לנתונים המשותפים. בלי זה,
+       עותק של הגיליון היה מצביע את מי שמשך ממנו אל הגיליון המקורי. */
+    var incoming = Object.assign({}, d.settings);
+    delete incoming.scriptUrl; delete incoming.sheetUrl;
+    delete incoming.sandboxUrl; delete incoming.testMode;
     localStorage.setItem('settings', JSON.stringify(
-      Object.assign({}, d.settings, { scriptUrl: settings.scriptUrl })));
+      Object.assign({}, incoming, {
+        scriptUrl:  settings.scriptUrl,
+        sheetUrl:   settings.sheetUrl,
+        sandboxUrl: settings.sandboxUrl,
+        testMode:   settings.testMode
+      })));
   }
   localStorage.setItem('lastRemoteAt', payload.savedAt || '');
   return true;
