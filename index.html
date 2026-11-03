@@ -22,6 +22,9 @@
     header h1{font-size:1.25rem;font-weight:700}
     header p{font-size:.75rem;opacity:.7;margin-top:2px}
 
+    /* top נקבע ב-JS לפי הגובה האמיתי של הכותרת (_stickNav).
+       ערך קבוע נשבר ברגע שנוספה שורת שם האפליקציה, והתפריט
+       נעלם מתחת לכותרת בגלילה. */
     nav{display:flex;background:var(--g2);position:sticky;top:56px;z-index:99;overflow-x:auto;-webkit-overflow-scrolling:touch}
     nav::-webkit-scrollbar{display:none}
     nav button{flex:0 0 auto;padding:11px 14px;border:none;background:transparent;color:rgba(255,255,255,.65);font-size:.8rem;cursor:pointer;font-family:inherit;transition:.2s;white-space:nowrap}
@@ -2121,7 +2124,27 @@ function paintFarmName() {
   }
   var dt = hasFarm ? farmName() + ' · ' + APP_NAME : APP_NAME;
   if (document.title !== dt) document.title = dt;
+  _stickNav();
 }
+
+/* ══════ התפריט נדבק מתחת לכותרת ══════
+   גובה הכותרת משתנה — שם חווה ארוך נשבר לשתי שורות, שורת
+   הסנכרון מתארכת, ובמסך צר הכל גבוה יותר. לכן מודדים אותה
+   במקום להניח מספר. */
+var _navRO = null;
+function _stickNav() {
+  var h = document.querySelector('header');
+  var n = document.querySelector('nav');
+  if (!h || !n) return;
+  var px = Math.round(h.getBoundingClientRect().height);
+  if (px > 0) n.style.top = px + 'px';
+  /* הכותרת עצמה משנה גובה — נצפה בה ישירות, לא בכל הדף */
+  if (!_navRO && window.ResizeObserver) {
+    try { _navRO = new ResizeObserver(_stickNav); _navRO.observe(h); } catch (e) {}
+  }
+}
+window.addEventListener('resize', _stickNav);
+window.addEventListener('orientationchange', _stickNav);
 
 /* ══════ שכבת תרגום ══════
    היום יש עברית בלבד. כל מחרוזת חדשה עוברת כאן, כדי שהוספת
@@ -3717,8 +3740,8 @@ function _renderRotationPlannerInner() {
         var waveDateSpan = '';
         if (waveDateStr) {
           var _dCol = _segBlocked ? '#b91c1c' : (_segManual ? '#7c3aed' : '#0369a1');
-          var _dSty = 'font-size:.55rem;margin-left:1px;flex-shrink:0;color:' + _dCol
-                    + (_segBlocked ? ';cursor:pointer;font-weight:700' : '');
+          var _dSty = 'font-size:.68rem;font-weight:700;margin-left:1px;flex-shrink:0;color:' + _dCol
+                    + (_segBlocked ? ';cursor:pointer' : '');
           var _dExtra = _segBlocked
             ? ' title="בהזמנות רשום ' + waveDateShort(_segBlocked.orders)
               + ' — הערוגה מתעלמת כי יש לה תאריך משלה. לחצי כדי לבטל אותו."'
@@ -3738,7 +3761,10 @@ function _renderRotationPlannerInner() {
           +'<div style="flex:1;min-width:0">'
           +'<div style="display:flex;align-items:center;gap:2px;flex-wrap:wrap">'
           +waveTag
-         +(waveDateStr && si !== 0 ? '<span style="font-size:.68rem;font-weight:700;color:#0369a1;flex-shrink:0">'+waveDateStr+'</span>' : '')
+         /* התאריך מוצג לכל משתל, גם לראשון. קודם הוא הוסתר
+            ב-si !== 0, כי התאריך של הראשון מופיע גם בשדה של
+            הערוגה — אבל זה נקרא כאילו למשתל הראשון אין תאריך. */
+         +waveDateSpan
           +'</div>'
           +(function(){var sp2=plantSpecies.find(function(x){return x.name===s.crop;});var dm=isDripBedSp&&sp2&&sp2.dripBased?(sp2.rows||1):1;return'<div style="font-weight:600;color:#1f2937;word-break:normal;overflow-wrap:break-word;line-height:1.3">'+escHtml(s.crop)+(s.meters!==null?'<span style="font-weight:400;color:#6b7280"> '+(Math.round(s.meters*dm*10)/10)+'מ׳</span>':'')+'</div>';})()
           +'</div>'
