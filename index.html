@@ -1477,6 +1477,8 @@
       <button class="btn btn-outline btn-sm" onclick="pullFromSheets()">⬇️ משוך מהגיליון</button>
       <button class="btn btn-outline btn-sm" onclick="showVersions()">🕘 היסטוריית גרסאות</button>
       <button class="btn btn-outline btn-sm" onclick="setUserName()">👤 שם המשתמש</button>
+      <button class="btn btn-outline btn-sm" onclick="setAllTraySizes()"
+              title="כמה שתילים יוצאים ממגש בפועל — משפיע על ספירת מגשים ועל מחיר לשתיל">🧺 גודל מגש לכל הזנים</button>
             <a href="hashkaya.html" target="_blank" class="btn btn-outline btn-sm" style="text-decoration:none">💧 תכנון השקיה</a>
       <a href="tochnit.html" target="_blank" class="btn btn-outline btn-sm" style="text-decoration:none">📋 תוכנית העונה</a>
       <a href="risus.html" target="_blank" class="btn btn-outline btn-sm" style="text-decoration:none">🧪 מחשבון ריסוס</a>
@@ -2028,6 +2030,34 @@ function arrivalHLBar(season) {
     + '</div>'
     + (cropList ? '<div style="font-size:.76rem;color:#7c2d12;margin-top:4px;line-height:1.5">' + cropList + '</div>' : '')
     + '</div>';
+}
+
+/* ══════ גודל מגש אחיד ══════
+   מגש מכיל 300 תאים, אבל אחרי פחת יוצאים ממנו כ-250 שתילים.
+   250 הוא המספר שקובע גם את מחיר השתיל בפועל — חלוקה ב-300
+   מתמחרת אותו זול ב-17%. */
+function setAllTraySizes() {
+  var target = prompt('כמה שתילים יוצאים ממגש בפועל?', '250');
+  if (target === null) return;
+  var n = parseFloat(String(target).replace(',', '.'));
+  if (isNaN(n) || n <= 0) { showToast('מספר לא תקין', 'err'); return; }
+
+  var changing = plantSpecies.filter(function(s){ return (s.traySize || 300) !== n; });
+  if (!changing.length) { showToast('כל הזנים כבר על ' + n); return; }
+
+  var sample = changing.slice(0, 4).map(function(s){
+    return '• ' + s.name + ' (' + (s.traySize || 300) + ')';
+  }).join('\n');
+  if (!confirm('לשנות את גודל המגש ל-' + n + ' ב-' + changing.length +
+               ' מתוך ' + plantSpecies.length + ' הזנים?\n\n' + sample +
+               (changing.length > 4 ? '\n• ועוד ' + (changing.length - 4) : '') +
+               '\n\nזה משפיע על ספירת המגשים ועל מחיר לשתיל.')) return;
+
+  changing.forEach(function(s){ s.traySize = n; });
+  localStorage.setItem('plantSpecies', JSON.stringify(plantSpecies));
+  if (typeof renderOrderTable === 'function') renderOrderTable();
+  if (typeof renderSpeciesList === 'function') renderSpeciesList();
+  showToast('✓ ' + changing.length + ' זנים עודכנו ל-' + n + ' שתילים למגש');
 }
 
 /* ══════ גיליון בדיקה ══════
@@ -5621,7 +5651,24 @@ function renderOrderTable() {
         <td class="editable"><input type="number" value="${plants}" min="0"
           onchange="setOverridePlants(${d.id},${w},this.value,${d.dist||40},${d.rows||1})"
           onclick="this.select()"></td>
-        <td style="color:var(--g2);font-size:.8rem">${toUnit(plants)}</td>
+        <td class="editable" style="color:var(--g2);font-size:.8rem;min-width:72px">${(function(){
+          /* מגשים — הערכה שניתן לתקן. מספר המגשים הוא החלטה של
+             המשתלה ולא תוצאת חילוק: הם שולחים מגשי 300 תאים,
+             מניחים פחת, ומוסיפים מגש כשהפחת גדול. לכן ברגע
+             שהמשלוח מגיע, המספר האמיתי גובר על ההערכה. */
+          if (isSeed) return toUnit(plants);
+          var est = Math.ceil(plants / traySz);
+          var ov  = getOverride(d.id, w, 'trays');
+          var val = (ov !== null && ov !== undefined && ov !== '') ? ov : est;
+          var isOv = (ov !== null && ov !== undefined && ov !== '');
+          return '<input type="number" min="0" step="1" value="' + val + '" '
+            + 'title="' + (isOv ? 'מספר אמיתי שהוזן · ההערכה הייתה ' + est
+                                : 'הערכה · ' + plants + ' ÷ ' + traySz + '. אפשר לתקן כשהמשלוח מגיע') + '" '
+            + 'style="width:46px;text-align:center;direction:ltr;font-weight:600;color:'
+              + (isOv ? '#7c3aed' : '#0369a1') + '" '
+            + 'onchange="setOverride(' + d.id + ',' + w + ',\'trays\',this.value);renderOrderTable()" '
+            + 'onclick="this.select()"> מגשים';
+        })()}</td>
         <td>${(function(){
           var drips = d.drips || 0;
           if (!drips) return '—';
