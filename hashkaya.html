@@ -236,6 +236,19 @@
       <div class="hint">חיובי מוסיף · שלילי מפחית, למשל ‎-20 אחרי גשם</div>
     </div>
     <div class="ctl">
+      <label for="calcMode">בסיס החישוב</label>
+      <select id="calcMode" onchange="setCalcMode(this.value)">
+        <option value="full">כל שטח הברז</option>
+        <option value="active">רק מה ששתול (לפי הרוטציה)</option>
+      </select>
+      <div class="hint" id="calcModeHint"></div>
+    </div>
+    <div class="ctl" id="seasonCtl" style="display:none">
+      <label for="irrigSeason">עונה</label>
+      <select id="irrigSeason" onchange="setIrrigSeason(this.value)"></select>
+      <div class="hint">מתוך מתכנן הרוטציה</div>
+    </div>
+    <div class="ctl">
       <label for="price">מחיר קו״ב (₪)</label>
       <input type="number" id="price" value="1.30" step="0.05" min="0" oninput="savePrice();calc()">
       <div class="hint">נשמר במכשיר הזה</div>
@@ -336,10 +349,236 @@
 </div>
 
 <script>
-/* ספיקה = אורך × שלוחות × 1.6 × 5  (ל׳/שעה) */
-function flow(v){ return v.length * v.lines * 1.6 * 5; }
+/* ══════ מצב החישוב ══════
+   'full'   — כל שטח הברז, כפי שהיה תמיד
+   'active' — רק מה ששתול בפועל, לפי הרוטציה */
+let CALC_MODE = localStorage.getItem('irrigCalcMode') || 'full';
+function setCalcMode(m){
+  CALC_MODE = m;
+  try { localStorage.setItem('irrigCalcMode', m); } catch(e) {}
+  calc();
+}
+function activeOn(){ return CALC_MODE === 'active'; }
+function setIrrigSeason(s){
+  try { localStorage.setItem('irrigSeason', s); } catch(e) {}
+  calc();
+}
+
+/* מצב הבקרות של מצב החישוב — נקרא בכל calc() */
+function paintCalcMode(){
+  var sel = document.getElementById('calcMode');
+  if (sel && sel.value !== CALC_MODE) sel.value = CALC_MODE;
+
+  var seasons = rotSeasons();
+  var ctl = document.getElementById('seasonCtl');
+  var ssel = document.getElementById('irrigSeason');
+  if (ctl) ctl.style.display = (activeOn() && seasons.length) ? '' : 'none';
+  if (ssel && activeOn() && seasons.length) {
+    var cur = currentSeason();
+    var want = seasons.map(function(s){
+      return '<option value="' + s.replace(/"/g,'&quot;') + '"'
+        + (s === cur ? ' selected' : '') + '>' + s + '</option>';
+    }).join('');
+    if (ssel.innerHTML !== want) ssel.innerHTML = want;
+    ssel.value = cur;
+  }
+
+  var hint = document.getElementById('calcModeHint');
+  if (!hint) return;
+  if (!activeOn()) {
+    hint.textContent = 'מניח שכל הערוגות מושקות';
+    hint.style.color = '';
+    return;
+  }
+  if (!fieldDefs().length) {
+    hint.innerHTML = '⚠ חסרות הגדרות החלקות — פתחי את האפליקציה הראשית פעם אחת';
+    hint.style.color = '#b45309';
+    return;
+  }
+  if (!seasons.length) {
+    hint.innerHTML = '⚠ אין תוכנית רוטציה שמורה';
+    hint.style.color = '#b45309';
+    return;
+  }
+  hint.textContent = 'ערוגה ריקה לא נספרת';
+  hint.style.color = '#166534';
+}
+
+/* ספיקה = מטרי שלוחה × 8 ל׳/שעה.
+   במצב מלא: אורך × שלוחות שבהגדרת הברז.
+   במצב פעיל: מטרי השלוחה שבאמת שתולים, לפי הרוטציה. */
+function flow(v){
+  if (activeOn()) {
+    var a = valveActive(v, currentSeason());
+    if (a.meters > 0) return a.flow;
+    return 0;
+  }
+  return v.length * v.lines * 1.6 * 5;
+}
 /* שטח בדונם */
-function dunam(v){ return v.length / v.divisor; }
+function dunam(v){
+  if (activeOn()) {
+    var a = valveActive(v, currentSeason());
+    if (a.meters > 0) return a.dunam;
+    return 0;
+  }
+  return v.length / v.divisor;
+}
+
+/* ══════ שטח פעיל מתוך הרוטציה ══════
+   מספר השלוחות שגידול תופס הוא תכונה של הגידול ולא של הערוגה —
+   גידול אחד יושב על 4 שלוחות, זה שיבוא אחריו על 2. לכן המספר
+   הקבוע שבהגדרות הברז לא יכול להיות נכון, והרוטציה היא המקור
+   היחיד שיודע מה באמת שתול כרגע. */
+const VALVE_FIELDS_DEFAULT = {
+  1: ['בוסתן'],
+  2: ['חול ימין', 'חול שמאל', 'ספירלה'],
+  3: ['אילנית ימין', 'אילנית שמאל'],
+  4: ['בז ימין', 'בז שמאל', 'קיפוד ימין', 'קיפוד שמאל', 'גדר ליד מיכה'],
+  5: ['פתוח ימין', 'פתוח שמאל', 'זיתים']
+};
+let VALVE_FIELDS = JSON.parse(localStorage.getItem('valveFields') || 'null')
+                   || JSON.parse(JSON.stringify(VALVE_FIELDS_DEFAULT));
+
+function fieldDefs(){
+  try { return JSON.parse(localStorage.getItem('fieldDefs') || '[]') || []; }
+  catch(e){ return []; }
+}
+function fieldDef(name){
+  return fieldDefs().find(function(f){ return f.name === name; }) || null;
+}
+
+/* העונות שיש להן תוכנית אמיתית. השמות החלקיים ("ס", "סת", "סתיו")
+   הם שאריות הקלדה ואין בהם ערוגות — מסוננים. */
+function rotSeasons(){
+  var plan;
+  try { plan = JSON.parse(localStorage.getItem('rotationPlan') || '{}'); }
+  catch(e){ return []; }
+  return Object.keys(plan).filter(function(s){
+    var beds = plan[s] || {};
+    return Object.keys(beds).some(function(k){
+      var v = beds[k];
+      var segs = Array.isArray(v) ? v : (v ? [v] : []);
+      return segs.some(function(x){ return x && (typeof x === 'string' ? x : x.crop); });
+    });
+  });
+}
+function currentSeason(){
+  var saved = localStorage.getItem('irrigSeason');
+  var all = rotSeasons();
+  if (saved && all.indexOf(saved) >= 0) return saved;
+  /* ברירת מחדל: העונה עם השם הארוך ביותר — בפועל המלאה מביניהן */
+  return all.slice().sort(function(a,b){ return b.length - a.length; })[0] || '';
+}
+
+/* ── תאריך ההגעה של משתל, כמו באפליקציה הראשית ── */
+function _lsJSON(key, dflt){
+  try { var v = JSON.parse(localStorage.getItem(key) || 'null'); return v === null ? dflt : v; }
+  catch(e){ return dflt; }
+}
+function _segArrivalISO(seg, season){
+  if (!seg || typeof seg !== 'object') return '';
+  if (seg.arriveDate) return seg.arriveDate;
+  var defs = _lsJSON('plantDefs', []);
+  var cd = defs.find(function(x){ return x.name === seg.crop && x.season === season; });
+  if (!cd) return '';
+  var w = Number(seg.wave) || 1;
+  var ov = _lsJSON('orderOverrides', {});
+  var od = ov[cd.id + '_' + w + '_date'];
+  if (od) return od;
+  var starts = (_lsJSON('settings', {}) || {}).seasonStarts || {};
+  var ss = starts[season];
+  if (!cd.startWeek || !ss) return cd.startDate || '';
+  var d = new Date(ss + 'T00:00:00');
+  d.setDate(d.getDate() + (cd.startWeek - 1) * 7 + (w - 1) * (Number(cd.interval) || 0) * 7);
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0')
+       + '-' + String(d.getDate()).padStart(2,'0');
+}
+function _todayISO(){
+  var d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0')
+       + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+/* מטרי שלוחה פעילים בחלקה אחת */
+function activeDripMeters(fieldName, season){
+  var plan;
+  try { plan = JSON.parse(localStorage.getItem('rotationPlan') || '{}'); }
+  catch(e){ return { meters:0, beds:0 }; }
+  var beds = (plan[season] || {});
+  var fd = fieldDef(fieldName);
+  var bedLen = fd && fd.len ? fd.len : 30;
+  var drips  = fd && fd.drips ? fd.drips : 1;
+  var cap    = bedLen * drips;          /* אי אפשר להשקות יותר מזה */
+  var today  = _todayISO();
+  var total = 0, used = {}, capped = 0;
+
+  Object.keys(beds).forEach(function(key){
+    var idx = key.lastIndexOf('_');
+    if (idx < 1 || key.slice(0, idx) !== fieldName) return;
+    var v = beds[key];
+    var segs = Array.isArray(v) ? v : (v ? [v] : []);
+
+    /* רק משתלים שכבר הגיעו. משתל שמגיע בדצמבר אינו מושקה היום. */
+    var live = [];
+    segs.forEach(function(s){
+      if (!s) return;
+      var crop = (typeof s === 'string') ? s : s.crop;
+      if (!crop || crop === 'מנוחה' || crop === '?') return;
+      if (typeof s === 'object' && s.cleared) return;   /* חוסל — השלוחות פנויות */
+      var m = (typeof s === 'object' && s.meters !== null && s.meters !== undefined)
+        ? Number(s.meters) : cap;
+      if (!isFinite(m) || m <= 0) return;
+      var arr = _segArrivalISO(s, season);
+      if (arr && arr > today) return;          /* טרם הגיע */
+      live.push({ m: m, arr: arr || '' });
+    });
+
+    /* משתל חדש מחליף ישן — ולכן סופרים מהחדש לישן עד תקרת הערוגה.
+       ערוגה בת 30 מ׳ ו-4 שלוחות לא יכולה להחזיק יותר מ-120 מ׳ צינור,
+       גם אם רשומים בה חמישה משתלים לאורך העונה. */
+    live.sort(function(a,b){ return (b.arr || '').localeCompare(a.arr || ''); });
+    var bedSum = 0;
+    for (var i = 0; i < live.length; i++) {
+      if (bedSum >= cap - 0.01) { capped++; break; }
+      bedSum += Math.min(live[i].m, cap - bedSum);
+    }
+    if (bedSum > 0) { total += bedSum; used[key] = true; }
+  });
+
+  return { meters: total, beds: Object.keys(used).length, capped: capped };
+}
+
+/* סיכום פעיל לברז: מטרי שלוחה, שלוחות, שטח וספיקה */
+function valveActive(v, season){
+  var names = VALVE_FIELDS[v.id] || [];
+  var meters = 0, bedCount = 0, area = 0, known = 0, shluhot = 0;
+  names.forEach(function(n){
+    var fd = fieldDef(n);
+    var a = activeDripMeters(n, season);
+    meters += a.meters;
+    bedCount += a.beds;
+    if (fd) {
+      known++;
+      /* שטח = (מטרי צינור ÷ שלוחות בערוגה) × רוחב הערוגה */
+      var d = fd.drips || 1;
+      area += (a.meters / d) * (fd.width || 1.5);
+      /* שלוחות נספרות לכל חלקה לפי אורך הערוגה שלה — ברז אחד
+         מכסה חלקות באורכים שונים (חול ימין 21 מ׳, שמאל 15). */
+      if (fd.len) shluhot += a.meters / fd.len;
+    }
+  });
+  return {
+    meters: meters,
+    beds: bedCount,
+    shluhot: shluhot,
+    dunam: area / 1000,
+    sqm: area,
+    flow: meters * 8,            /* 8 ל׳/שעה למטר שלוחה */
+    fieldsKnown: known,
+    fieldsTotal: names.length
+  };
+}
 
 /* ══════ עלות מים ══════ */
 function priceOf(){
@@ -584,6 +823,7 @@ function set(id, key, val){
 }
 
 function calc(){
+  paintCalcMode();
   const evap = Number(document.getElementById('evap').value) || 0;
   const bump = clampBump(Number(document.getElementById('bump').value) || 0);
   const targetMM = evap * (1 + bump/100);
@@ -615,7 +855,16 @@ function calc(){
     html += '<tr>' +
       '<td><div class="valve">' + v.name +
         '<small>ברז ' + v.id + ' · ' + area.toFixed(2) + ' דונם · ' +
-        f.toLocaleString('he-IL') + ' ל״ש</small></div></td>' +
+        Math.round(f).toLocaleString('he-IL') + ' ל״ש</small>' +
+        (function(){
+          if (!activeOn()) return '';
+          var a = valveActive(v, currentSeason());
+          if (!a.meters) return '<small style="color:#b45309">אין שתילות פעילות</small>';
+          return '<small style="color:#166534">' + Math.round(a.meters) + ' מ׳ שלוחה · '
+            + (a.shluhot ? a.shluhot.toFixed(1) + ' שלוחות · ' : '')
+            + a.beds + ' ערוגות</small>';
+        })() +
+        '</div></td>' +
 
       '<td class="c"><input class="cell-in" type="number" min="-90" max="200" step="5" placeholder="' +
         clampBump(Number(document.getElementById('bump').value)||0) + '" value="' +
