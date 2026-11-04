@@ -1423,11 +1423,15 @@
     <div class="section-label">🔗 חיבור ל-Google Sheets</div>
     <div class="fg">
       <label>Google Apps Script URL</label>
-      <input type="url" id="cfg-url" placeholder="https://script.google.com/macros/s/..." dir="ltr">
+      <!-- נשמר תוך כדי הקלדה, כמו כל שדה אחר באפליקציה. בלי זה
+           הכתובת אבדה למי שלא לחץ "שמור" שיושב הרבה מתחת. -->
+      <input type="url" id="cfg-url" placeholder="https://script.google.com/macros/s/..." dir="ltr"
+             onchange="if(!this.value.trim()){clearUrlField('script')}else{saveSettings(false);showToast('✓ כתובת הסקריפט נשמרה')}">
     </div>
     <div class="fg">
       <label>קישור לגיליון עצמו (Google Sheets)</label>
-      <input type="url" id="cfg-sheet-url" placeholder="https://docs.google.com/spreadsheets/d/..." dir="ltr">
+      <input type="url" id="cfg-sheet-url" placeholder="https://docs.google.com/spreadsheets/d/..." dir="ltr"
+             onchange="if(!this.value.trim()){clearUrlField('sheet')}else{saveSettings(false);showToast('✓ קישור הגיליון נשמר')}">
     </div>
     <div class="sync-row"><div class="sdot" id="connDot"></div><span id="connText">לא מוגדר</span></div>
     <div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border)">
@@ -7835,14 +7839,34 @@ function importAllData(input) {
 }
 
 function saveSettings(toast=true) {
+  /* שדה ריק לא מוחק כתובת קיימת. saveSettings נקראת גם מהוספת
+     חלקה, סוג פעולה או קטגוריה — פעולות שאין להן שום קשר
+     לחיבור. אם אחת מהן הייתה רצה כששדה הכתובת ריק, החיבור
+     לגיליון היה נמחק בלי שאיש יבחין. למחיקה מכוונת יש
+     clearUrlField. */
   const urlEl = document.getElementById('cfg-url');
-  if (urlEl) settings.scriptUrl = urlEl.value.trim();
+  if (urlEl) {
+    const v = urlEl.value.trim();
+    if (v || !settings.scriptUrl) settings.scriptUrl = v;
+  }
   const sheetEl = document.getElementById('cfg-sheet-url');
-  if (sheetEl) settings.sheetUrl = sheetEl.value.trim();
+  if (sheetEl) {
+    const v2 = sheetEl.value.trim();
+    if (v2 || !settings.sheetUrl) settings.sheetUrl = v2;
+  }
   localStorage.setItem('settings', JSON.stringify(settings));
   updateConnStatus();
   updateSheetLink();
   if (toast) showToast('נשמר');
+}
+
+/* מחיקה מכוונת של כתובת — דרך השדה עצמו בלבד */
+function clearUrlField(which) {
+  if (which === 'script') settings.scriptUrl = '';
+  else settings.sheetUrl = '';
+  localStorage.setItem('settings', JSON.stringify(settings));
+  updateConnStatus();
+  updateSheetLink();
 }
 
 function updateSheetLink() {
