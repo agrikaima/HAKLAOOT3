@@ -284,6 +284,7 @@
         <th class="c" style="width:88px">אורך (מ׳)</th>
         <th class="c" style="width:78px">שלוחות</th>
         <th class="c" style="width:88px">מחלק לדונם</th>
+        <th class="c" style="width:64px" title="עצים או רב-שנתיים — תמיד לפי השטח המלא">רב-שנתי</th>
         <th class="c" style="width:70px">דונם</th>
         <th class="c" style="width:92px">ל׳/שעה</th>
       </tr></thead>
@@ -407,8 +408,14 @@ function paintCalcMode(){
 /* ספיקה = מטרי שלוחה × 8 ל׳/שעה.
    במצב מלא: אורך × שלוחות שבהגדרת הברז.
    במצב פעיל: מטרי השלוחה שבאמת שתולים, לפי הרוטציה. */
+/* ברז רב-שנתי — עצים או גידולי קבע. התוכן שלו לא עובר ברוטציה
+   ולכן לא ניתן לגזור אותו ממנה: הבוסתן הוא עצים, ובחול יש
+   רב-שנתיים. בלי הסימון הזה הם היו מקבלים אפס במצב "פעיל"
+   ונעלמים מהחשבון, למרות שהם מושקים כל השנה. */
+function isPerennial(v){ return !!v.perennial; }
+
 function flow(v){
-  if (activeOn()) {
+  if (activeOn() && !isPerennial(v)) {
     var a = valveActive(v, currentSeason());
     if (a.meters > 0) return a.flow;
     return 0;
@@ -417,7 +424,7 @@ function flow(v){
 }
 /* שטח בדונם */
 function dunam(v){
-  if (activeOn()) {
+  if (activeOn() && !isPerennial(v)) {
     var a = valveActive(v, currentSeason());
     if (a.meters > 0) return a.dunam;
     return 0;
@@ -602,6 +609,19 @@ function shek(n){
   var d = n < 10 ? 2 : 0;
   return '₪' + n.toLocaleString('he-IL', { minimumFractionDigits:d, maximumFractionDigits:d });
 }
+/* סכומי המים הנוכחיים — לסבב אחד ולממוצע יומי */
+function _sumCube(){
+  var session = 0, day = 0;
+  VALVES.forEach(function(v){
+    var s = state[v.id];
+    var mm = targetOf(v.id), area = dunam(v);
+    var every = Math.max(1, Number(s.everyDays) || 1);
+    session += mm * area * every;
+    day     += mm * area;
+  });
+  return { session: session, day: day };
+}
+
 function _costCell(label, cube, money){
   return '<div class="cost-cell">'
     + '<div class="cost-lbl">' + label + '</div>'
@@ -684,8 +704,9 @@ function wetColor(n){
 
 /* ── הברזים, לפי הטבלה בשיטס. ניתנים לעריכה ונשמרים ── */
 const DEFAULT_VALVES = [
-  { id:1, name:'בוסתן',       length:50,  divisor:555, lines:1 },
-  { id:2, name:'חול ברוטו',   length:310, divisor:666, lines:1 },
+  /* בוסתן = עצים · חול = רב-שנתיים. שניהם אינם ברוטציה. */
+  { id:1, name:'בוסתן',       length:50,  divisor:555, lines:1, perennial:true },
+  { id:2, name:'חול ברוטו',   length:310, divisor:666, lines:1, perennial:true },
   { id:3, name:'אילנית',      length:840, divisor:666, lines:3 },
   { id:4, name:'בז / קיפוד',  length:840, divisor:550, lines:2 },
   { id:5, name:'פתוח וזיתים', length:850, divisor:550, lines:3 }
@@ -701,7 +722,9 @@ function saveValves(){
 function setValve(id, key, val){
   const v = VALVES.find(x => x.id === id);
   if (!v) return;
-  v[key] = key === 'name' ? val : (Number(val) || 0);
+  v[key] = (key === 'name') ? val
+         : (key === 'perennial') ? !!val
+         : (Number(val) || 0);
   saveValves();
   calc();
   renderValveEditor();
@@ -729,8 +752,11 @@ function renderValveEditor(){
         '" onchange="setValve(' + v.id + ',\'lines\',this.value)"></td>' +
       '<td class="c"><input class="ve-num" type="number" min="1" value="' + v.divisor +
         '" onchange="setValve(' + v.id + ',\'divisor\',this.value)"></td>' +
+      '<td class="c"><input type="checkbox" ' + (v.perennial ? 'checked' : '') +
+        ' onchange="setValve(' + v.id + ',\'perennial\',this.checked)"' +
+        ' title="עצים או רב-שנתיים — לא מופיעים ברוטציה, ולכן מחושבים תמיד לפי השטח המלא"></td>' +
       '<td class="c sub">' + dunam(v).toFixed(2) + '</td>' +
-      '<td class="c sub">' + flow(v).toLocaleString('he-IL') + '</td>' +
+      '<td class="c sub">' + Math.round(flow(v)).toLocaleString('he-IL') + '</td>' +
       '</tr>';
   }).join('');
 }
@@ -858,6 +884,7 @@ function calc(){
         Math.round(f).toLocaleString('he-IL') + ' ל״ש</small>' +
         (function(){
           if (!activeOn()) return '';
+          if (isPerennial(v)) return '<small style="color:#6d28d9">🌳 רב-שנתי · שטח מלא</small>';
           var a = valveActive(v, currentSeason());
           if (!a.meters) return '<small style="color:#b45309">אין שתילות פעילות</small>';
           return '<small style="color:#166534">' + Math.round(a.meters) + ' מ׳ שלוחה · '
@@ -947,7 +974,19 @@ function calc(){
     'רטיבות 1–8 נרשמת לתיעוד ולהשוואה, ואינה משנה את החישוב.';
 }
 
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwK_LF4ijmwHcwbbcoMEBcn00fNp7KhE4rlo5H1nUjXUfGn0SFRojaIGb4z7axMy-Gq4A/exec';
+/* ══════ כתובת הסקריפט ══════
+   נלקחת מהגדרות האפליקציה, לא קבועה כאן. כתובת קבועה נשארה
+   מאחור אחרי פריסה מחדש, והדף שלח לפריסה ישנה בלי שאיש הבחין —
+   השמירות פשוט לא הגיעו לגיליון. */
+const SCRIPT_URL_FALLBACK =
+  'https://script.google.com/macros/s/AKfycbwK_LF4ijmwHcwbbcoMEBcn00fNp7KhE4rlo5H1nUjXUfGn0SFRojaIGb4z7axMy-Gq4A/exec';
+function scriptUrl(){
+  var u = ((_lsJSON('settings', {}) || {}).scriptUrl || '').trim();
+  return u || SCRIPT_URL_FALLBACK;
+}
+function scriptUrlIsFromApp(){
+  return !!((_lsJSON('settings', {}) || {}).scriptUrl || '').trim();
+}
 
 /* ── שמירה מקומית + לגיליון ── */
 function save(ev){
@@ -990,7 +1029,7 @@ function save(ev){
   const btn = ev && ev.target;
   if (btn) { btn.disabled = true; btn.textContent = 'שולח...'; }
 
-  fetch(SCRIPT_URL, {
+  fetch(scriptUrl(), {
     method: 'POST',
     body: JSON.stringify({
       action: 'saveIrrigation',
@@ -1001,7 +1040,21 @@ function save(ev){
       target: Number(targetMM.toFixed(2)),
       startTime: state[VALVES[0].id].start,
       gapHours: gapHours,
-      valves: valves
+      valves: valves,
+      /* ── עלות: נרשמת בגיליון יחד עם התכנון, כך שכל שינוי
+         בהשקיה מתועד עם התאריך שלו ועם הסכום שנבע ממנו ── */
+      price: priceOf(),
+      calcMode: activeOn() ? 'פעיל בלבד' : 'כל שטח הברז',
+      season: activeOn() ? currentSeason() : '',
+      activeMeters: activeOn()
+        ? Math.round(VALVES.reduce(function(a,v){ return a + valveActive(v, currentSeason()).meters; }, 0))
+        : '',
+      cubeSession: Number(_sumCube().session.toFixed(2)),
+      cubeDay:     Number(_sumCube().day.toFixed(2)),
+      costSession: Number((_sumCube().session * priceOf()).toFixed(2)),
+      costDay:     Number((_sumCube().day   * priceOf()).toFixed(2)),
+      costWeek:    Number((_sumCube().day * 7  * priceOf()).toFixed(2)),
+      costMonth:   Number((_sumCube().day * 30 * priceOf()).toFixed(2))
     })
   }).then(function(){
     if (btn) { btn.disabled = false; btn.textContent = '✓ נשמר'; 
@@ -1030,6 +1083,18 @@ function renderHistory(){
         }).join('') + '</tr>';
     }).join('') + '</table>';
 }
+
+/* ברזים ששמורים מלפני שהסימון קיים — מסמנים פעם אחת לפי השם,
+   כדי שהבוסתן והחול לא ייעלמו מהחשבון בלי שאיש ישים לב */
+(function migratePerennial(){
+  var touched = false;
+  VALVES.forEach(function(v){
+    if (v.perennial === undefined && /בוסתן|חול/.test(v.name)) {
+      v.perennial = true; touched = true;
+    }
+  });
+  if (touched) saveValves();
+})();
 
 /* ── התחלה ── */
 document.getElementById('weekDate').valueAsDate = new Date();
